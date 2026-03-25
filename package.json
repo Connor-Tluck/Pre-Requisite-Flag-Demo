@@ -1,0 +1,16 @@
+{
+  "name": "ld-orchestration-demo",
+  "version": "1.0.0",
+  "description": "LaunchDarkly Feature Flag Orchestration Demo - Multi-team release coordination with prerequisite flags",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@launchdarkly/node-server-sdk": "^9.7.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}

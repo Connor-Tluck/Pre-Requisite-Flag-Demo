@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LaunchDarkly Orchestration — Release Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%236366f1'/><path d='M30 25h15l15 25-15 25H30l15-25L30 25z' fill='white'/><path d='M50 25h15l15 25-15 25H50l15-25L50 25z' fill='white' opacity='.5'/></svg>">
+</head>
+<body>
+
+<nav>
+  <div class="logo">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <rect width="28" height="28" rx="6" fill="#6366f1"/>
+      <path d="M8 8h4l4 6-4 6H8l4-6-4-6z" fill="#fff"/>
+      <path d="M14 8h4l4 6-4 6h-4l4-6-4-6z" fill="#fff" opacity=".5"/>
+    </svg>
+    <span>LD Orchestration</span>
+  </div>
+  <div class="nav-links">
+    <a href="/" class="active">Dashboard</a>
+    <a href="/viz.html">Dependency Graph</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <h1>Unified Checkout 2.0 — Release Orchestration</h1>
+  <p>Coordinating feature releases across 5 engineering teams using LaunchDarkly prerequisite flags. Toggle flags in dependency order to safely roll out the full release.</p>
+</section>
+
+<div class="overall-progress">
+  <div class="progress-bar-container">
+    <div class="progress-bar-fill" id="progressFill" style="width: 0%"></div>
+  </div>
+  <div class="progress-label">
+    <span id="progressText">0 / 14 flags enabled</span>
+    <span id="progressPercent">0%</span>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="btn success" onclick="rolloutSequence()">Staged Rollout</button>
+  <button class="btn primary" onclick="enableAll()">Enable All</button>
+  <button class="btn danger" onclick="resetAll()">Reset All</button>
+</div>
+
+<div class="release-banner" id="releaseBanner">
+  <h2 id="releaseTitle">Checkout v2 — Awaiting Dependencies</h2>
+  <p class="status-text" id="releaseStatus">Enable all prerequisite flags across teams to unlock the full release</p>
+</div>
+
+<div class="teams-grid" id="teamsGrid"></div>
+
+<div class="activity-log">
+  <h3>Activity Log</h3>
+  <div class="log-entries" id="logEntries">
+    <div class="log-entry">
+      <span class="timestamp">[init]</span>
+      Dashboard loaded — all flags in OFF state
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+const API = '';
+let flags = [];
+let teams = {};
+
+async function fetchData() {
+  const [flagsRes, teamsRes] = await Promise.all([
+    fetch(`${API}/api/flags`).then(r => r.json()),
+    fetch(`${API}/api/teams`).then(r => r.json()),
+  ]);
+  flags = flagsRes;
+  teams = teamsRes;
+  render();
+}
+
+function render() {
+  renderTeams();
+  renderProgress();
+  renderReleaseBanner();
+}
+
+function renderProgress() {
+  const total = flags.filter(f => f.team !== 'all').length;
+  const enabled = flags.filter(f => f.team !== 'all' && f.enabled).length;
+  const pct = Math.round((enabled / total) * 100);
+  document.getElementById('progressFill').style.width = `${pct}%`;
+  document.getElementById('progressText').textContent = `${enabled} / ${total} flags enabled`;
+  document.getElementById('progressPercent').textContent = `${pct}%`;
+}
+
+function renderReleaseBanner() {
+  const master = flags.find(f => f.key === 'release-checkout-v2');
+  const banner = document.getElementById('releaseBanner');
+  const title = document.getElementById('releaseTitle');
+  const status = document.getElementById('releaseStatus');
+
+  if (master && master.effective) {
+    banner.classList.add('ready');
+    title.textContent = 'Checkout v2 — LIVE';
+    status.textContent = 'All dependencies met. Unified Checkout 2.0 is fully enabled for all customers.';
+  } else if (master && master.enabled) {
+    banner.classList.remove('ready');
+    title.textContent = 'Checkout v2 — Enabled but Blocked';
+    status.textContent = 'Master flag is ON but some prerequisites are not yet met.';
+  } else {
+    banner.classList.remove('ready');
+    const unmet = master ? master.prerequisites.filter(p => {
+      const pf = flags.find(f => f.key === p);
+      return !pf || !pf.effective;
+    }) : [];
+    title.textContent = 'Checkout v2 — Awaiting Dependencies';
+    status.textContent = unmet.length
+      ? `Blocked by: ${unmet.join(', ')}`
+      : 'Enable all prerequisite flags across teams to unlock the full release';
+  }
+}
+
+function renderTeams() {
+  const grid = document.getElementById('teamsGrid');
+  grid.innerHTML = '';
+
+  const teamKeys = Object.keys(teams);
+  teamKeys.forEach(teamKey => {
+    const team = teams[teamKey];
+    const teamFlags = flags.filter(f => f.team === teamKey);
+    if (!teamFlags.length) return;
+
+    const enabledCount = teamFlags.filter(f => f.enabled).length;
+    const totalCount = teamFlags.length;
+
+    const card = document.createElement('div');
+    card.className = 'team-card';
+    card.innerHTML = `
+      <div class="team-header">
+        <div class="team-icon" style="background: ${team.color}22; color: ${team.color}">
+          ${team.abbr}
+        </div>
+        <div class="team-header-text">
+          <h3>${team.name}</h3>
+          <p>${team.description}</p>
+        </div>
+        <div class="team-progress" style="color: ${enabledCount === totalCount ? 'var(--success)' : 'var(--text-dim)'}">
+          ${enabledCount}/${totalCount}
+        </div>
+      </div>
+      <div class="flag-list">
+        ${teamFlags.map(f => renderFlagRow(f)).join('')}
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+
+  const masterFlag = flags.find(f => f.team === 'all');
+  if (masterFlag) {
+    const card = document.createElement('div');
+    card.className = 'team-card';
+    card.style.gridColumn = '1 / -1';
+    card.style.borderColor = masterFlag.effective ? 'var(--success)' : 'var(--pink)';
+    card.innerHTML = `
+      <div class="team-header" style="background: linear-gradient(135deg, rgba(99,102,241,.08), rgba(244,114,182,.08))">
+        <div class="team-icon" style="background: rgba(244,114,182,.15); color: var(--pink); font-size: .75rem; font-weight: 800; letter-spacing: .04em;">GATE</div>
+        <div class="team-header-text">
+          <h3>Master Release Gate</h3>
+          <p>Aggregates all team dependencies into a single release switch</p>
+        </div>
+      </div>
+      <div class="flag-list">
+        ${renderFlagRow(masterFlag)}
+      </div>
+    `;
+    grid.appendChild(card);
+  }
+}
+
+function renderFlagRow(flag) {
+  const canEnable = flag.prerequisites.every(p => {
+    const pf = flags.find(f => f.key === p);
+    return pf && pf.enabled;
+  });
+
+  let statusClass = 'off';
+  if (flag.enabled && flag.effective) statusClass = 'on';
+  else if (flag.enabled && !flag.effective) statusClass = 'blocked';
+
+  const prereqBadges = flag.prerequisites.map(p => {
+    const pf = flags.find(f => f.key === p);
+    const met = pf && pf.enabled;
+    return `<span class="prereq-badge ${met ? 'met' : 'unmet'}" title="${p}">${shortKey(p)}</span>`;
+  }).join('');
+
+  return `
+    <div class="flag-row" data-flag="${flag.key}">
+      <div class="status-dot ${statusClass}"></div>
+      <div class="flag-info">
+        <div class="flag-name">
+          ${flag.name}
+          ${flag.enabled && !flag.effective ? '<span style="font-size:.7rem;color:var(--warning)">BLOCKED</span>' : ''}
+        </div>
+        <div class="flag-desc">${flag.description}</div>
+        ${flag.prerequisites.length ? `<div class="flag-prereqs">${prereqBadges}</div>` : ''}
+      </div>
+      <label class="toggle">
+        <input type="checkbox" ${flag.enabled ? 'checked' : ''} ${!canEnable && !flag.enabled ? 'disabled' : ''}
+               onchange="toggleFlag('${flag.key}', this.checked)">
+        <span class="slider"></span>
+      </label>
+    </div>
+  `;
+}
+
+function shortKey(key) {
+  return key.split('-').slice(0, 2).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+async function toggleFlag(key, enabled) {
+  try {
+    const res = await fetch(`${API}/api/flags/${key}/toggle`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      showToast(`Cannot enable ${shortKey(key)}: prerequisites not met`, 'error');
+      addLog(key, 'blocked', data.unmet);
+      fetchData();
+      return;
+    }
+
+    if (enabled) {
+      showToast(`${shortKey(key)} enabled`, 'success');
+      addLog(key, 'on');
+    } else {
+      showToast(`${shortKey(key)} disabled`, 'info');
+      addLog(key, 'off');
+    }
+
+    if (data.cascadedOff && data.cascadedOff.length) {
+      showToast(`Cascade: ${data.cascadedOff.map(shortKey).join(', ')} turned off`, 'cascade');
+      data.cascadedOff.forEach(k => addLog(k, 'cascade'));
+    }
+
+    await fetchData();
+  } catch (err) {
+    showToast(`Error: ${err.message}`, 'error');
+  }
+}
+
+async function resetAll() {
+  await fetch(`${API}/api/flags/reset`, { method: 'POST' });
+  addLog('all', 'off', null, 'All flags reset');
+  showToast('All flags reset', 'info');
+  await fetchData();
+}
+
+async function enableAll() {
+  await fetch(`${API}/api/flags/enable-all`, { method: 'POST' });
+  addLog('all', 'on', null, 'All flags enabled in dependency order');
+  showToast('All flags enabled', 'success');
+  await fetchData();
+}
+
+async function rolloutSequence() {
+  const scenario = await fetch(`${API}/api/flags/scenario`).then(r => r.json());
+
+  await fetch(`${API}/api/flags/reset`, { method: 'POST' });
+  await fetchData();
+  addLog('all', 'off', null, 'Scenario started — resetting all flags');
+
+  for (const event of scenario) {
+    if (event.type === 'narration') {
+      addLog('--', 'off', null, event.title);
+      await new Promise(r => setTimeout(r, 1200));
+
+    } else if (event.type === 'blocked') {
+      addLog(event.key, 'blocked', event.prereqKeys, `${event.team} attempted toggle — gated by prerequisites`);
+      showToast(`${event.name}: BLOCKED by prerequisite gate`, 'error');
+      await new Promise(r => setTimeout(r, 1200));
+
+    } else if (event.type === 'enable') {
+      await fetch(`${API}/api/flags/${event.key}/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: true }),
+      });
+      addLog(event.key, 'on', null, `${event.team} enabled`);
+      await fetchData();
+      await new Promise(r => setTimeout(r, 700));
+
+    } else if (event.type === 'cascade') {
+      const names = event.flags.map(f => f.name);
+      showToast(`Gate opened — ${names.length} flags unlock at once`, 'success');
+      await Promise.all(event.flags.map(f =>
+        fetch(`${API}/api/flags/${f.key}/toggle`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: true }),
+        })
+      ));
+      event.flags.forEach(f => addLog(f.key, 'on', null, 'Prerequisite gate satisfied — auto-enabled'));
+      await fetchData();
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  }
+  showToast('Scenario complete — all flags active', 'success');
+}
+
+function addLog(key, action, unmet, note) {
+  const container = document.getElementById('logEntries');
+  const time = new Date().toLocaleTimeString();
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+
+  let actionHtml = '';
+  if (action === 'on') actionHtml = `<span class="action-on">ON</span>`;
+  else if (action === 'off') actionHtml = `<span class="action-off">OFF</span>`;
+  else if (action === 'blocked') actionHtml = `<span class="action-off">BLOCKED</span> — unmet: ${(unmet || []).join(', ')}`;
+  else if (action === 'cascade') actionHtml = `<span class="action-cascade">CASCADE OFF</span>`;
+
+  entry.innerHTML = `
+    <span class="timestamp">[${time}]</span>
+    <span class="flag-key">${key}</span> &rarr; ${actionHtml}
+    ${note ? `<span style="color:var(--text-dim)"> (${note})</span>` : ''}
+  `;
+  container.prepend(entry);
+}
+
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 4000);
+}
+
+fetchData();
+setInterval(fetchData, 5000);
+</script>
+</body>
+</html>

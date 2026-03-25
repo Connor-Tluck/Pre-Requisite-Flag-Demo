@@ -1,0 +1,1942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LaunchDarkly Orchestration — Dependency Graph</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%236366f1'/><path d='M30 25h15l15 25-15 25H30l15-25L30 25z' fill='white'/><path d='M50 25h15l15 25-15 25H50l15-25L50 25z' fill='white' opacity='.5'/></svg>">
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body { overflow: hidden; }
+
+    .viz-container {
+      display: flex;
+      height: calc(100vh - 57px);
+    }
+
+    /* ── Sidebar ──────────────────────────────────────────────────────── */
+    .sidebar {
+      width: 320px;
+      min-width: 320px;
+      background: var(--bg-card);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 1.25rem;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .sidebar-header h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: .25rem;
+    }
+
+    .sidebar-header p {
+      font-size: .78rem;
+      color: var(--text-dim);
+    }
+
+    .legend {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .legend h4 {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-dim);
+      margin-bottom: .75rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      padding: .3rem 0;
+      font-size: .8rem;
+    }
+
+    .legend-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    .legend-line {
+      width: 30px;
+      height: 3px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .sidebar-tab {
+      flex: 1;
+      padding: .65rem .5rem;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-dim);
+      font-family: inherit;
+      font-size: .78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: color .2s, border-color .2s, background .2s;
+      text-align: center;
+    }
+
+    .sidebar-tab:hover {
+      color: var(--text);
+      background: rgba(255,255,255,.03);
+    }
+
+    .sidebar-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .sidebar-panel {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    .sidebar-panel.active {
+      display: flex;
+    }
+
+    .flag-controls-panel {
+      padding: 0;
+    }
+
+    .flag-controls-panel .ctrl-team-section {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .flag-controls-panel .ctrl-team-header {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      padding: .65rem 1rem;
+      background: rgba(255,255,255,.02);
+    }
+
+    .flag-controls-panel .ctrl-team-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .65rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+      flex-shrink: 0;
+    }
+
+    .flag-controls-panel .ctrl-team-name {
+      font-size: .8rem;
+      font-weight: 600;
+    }
+
+    .flag-controls-panel .ctrl-team-count {
+      margin-left: auto;
+      font-size: .72rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-dim);
+    }
+
+    .flag-controls-panel .ctrl-flag-row {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      padding: .5rem 1rem .5rem 1.6rem;
+      border-top: 1px solid rgba(255,255,255,.04);
+      transition: background .15s;
+    }
+
+    .flag-controls-panel .ctrl-flag-row:hover {
+      background: var(--bg-hover);
+    }
+
+    .flag-controls-panel .ctrl-flag-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .flag-controls-panel .ctrl-flag-name {
+      font-size: .78rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .flag-controls-panel .ctrl-flag-status {
+      font-size: .65rem;
+      font-family: 'JetBrains Mono', monospace;
+      margin-top: 1px;
+    }
+
+    .sidebar-controls {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: .6rem;
+    }
+
+    .sidebar-controls .btn {
+      width: 100%;
+      justify-content: center;
+      font-size: .8rem;
+    }
+
+    .node-detail {
+      padding: 1.25rem;
+      flex: 1;
+    }
+
+    .node-detail.empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-dim);
+      font-size: .85rem;
+      text-align: center;
+    }
+
+    .detail-header {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      margin-bottom: 1rem;
+    }
+
+    .detail-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .detail-header h3 {
+      font-size: .95rem;
+      font-weight: 700;
+    }
+
+    .detail-meta {
+      font-size: .78rem;
+      color: var(--text-dim);
+      margin-bottom: 1rem;
+      line-height: 1.7;
+    }
+
+    .detail-meta strong { color: var(--text); }
+
+    .detail-prereqs,
+    .detail-dependents { margin-bottom: 1rem; }
+
+    .detail-prereqs h4,
+    .detail-dependents h4 {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-dim);
+      margin-bottom: .5rem;
+    }
+
+    .dep-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      padding: .2rem .65rem;
+      margin: .2rem .25rem .2rem 0;
+      border-radius: 6px;
+      font-size: .72rem;
+      font-weight: 600;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .dep-chip:hover {
+      border-color: var(--accent);
+      background: rgba(99, 102, 241, .1);
+    }
+
+    .dep-chip .chip-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    /* ── Graph Canvas ────────────────────────────────────────────────── */
+    .graph-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .graph-canvas {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(99,102,241,.03) 0%, transparent 70%),
+        var(--bg);
+    }
+
+    .graph-canvas svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .node-group { cursor: pointer; }
+
+    .node-rect {
+      rx: 10;
+      ry: 10;
+      stroke-width: 2;
+      transition: stroke .3s, filter .3s;
+    }
+
+    .node-group { cursor: grab; }
+    .node-group.dragging { cursor: grabbing; }
+
+    .node-group:hover .node-rect {
+      filter: brightness(1.3) drop-shadow(0 0 12px rgba(255,255,255,.15));
+    }
+
+    .node-group.dragging .node-rect {
+      filter: brightness(1.4) drop-shadow(0 0 18px rgba(255,255,255,.25));
+    }
+
+    .node-label {
+      fill: #fff;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      font-size: 11px;
+      text-anchor: middle;
+      pointer-events: none;
+    }
+
+    .node-team-label {
+      fill: rgba(255,255,255,.5);
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      font-size: 9px;
+      text-anchor: middle;
+      pointer-events: none;
+    }
+
+    .node-status-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      font-size: 8px;
+      text-anchor: middle;
+      pointer-events: none;
+      letter-spacing: .06em;
+    }
+
+    .node-blocker-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 500;
+      font-size: 7px;
+      text-anchor: middle;
+      pointer-events: none;
+      letter-spacing: .03em;
+      opacity: .85;
+    }
+
+    .link {
+      fill: none;
+      stroke-width: 2;
+      opacity: .5;
+    }
+
+    .link.met {
+      stroke: var(--success);
+      opacity: .7;
+    }
+
+    .link.unmet {
+      stroke: #475569;
+      stroke-dasharray: 6 4;
+    }
+
+
+    .particle {
+      fill: var(--success);
+      opacity: 0;
+    }
+
+    .particle.active { opacity: 1; }
+
+    .layer-label {
+      fill: rgba(255,255,255,.12);
+      font-family: 'Inter', sans-serif;
+      font-weight: 800;
+      font-size: 13px;
+      text-anchor: start;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+
+    .layer-divider {
+      stroke: rgba(255,255,255,.04);
+      stroke-width: 1;
+      stroke-dasharray: 8 6;
+    }
+
+    /* Tooltip */
+    .graph-tooltip {
+      position: absolute;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: .75rem 1rem;
+      font-size: .78rem;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .15s;
+      box-shadow: var(--shadow);
+      max-width: 280px;
+      z-index: 50;
+    }
+
+    .graph-tooltip.visible { opacity: 1; }
+    .graph-tooltip .tt-name { font-weight: 700; margin-bottom: .25rem; }
+    .graph-tooltip .tt-desc { color: var(--text-dim); font-size: .72rem; }
+    .graph-tooltip .tt-status { margin-top: .4rem; font-weight: 600; }
+
+    /* ── Rollout Narration Panel ──────────────────────────────────────── */
+    .rollout-panel {
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height .4s ease, padding .4s ease;
+      padding: 0 1.5rem;
+    }
+
+    .rollout-panel.open {
+      max-height: 360px;
+      padding: 1.25rem 1.5rem;
+      overflow-y: auto;
+    }
+
+    .rp-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: .75rem;
+    }
+
+    .rp-header h3 {
+      font-size: .85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .rp-step-counter {
+      font-size: .8rem;
+      font-weight: 600;
+      color: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .rp-progress {
+      height: 6px;
+      background: var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+
+    .rp-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--success));
+      border-radius: 999px;
+      transition: width .5s ease;
+      width: 0;
+    }
+
+    .rp-body {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 1.25rem;
+      align-items: start;
+    }
+
+    /* Left side: current event detail */
+    .rp-event { min-width: 0; }
+
+    .rp-event-badge {
+      display: inline-block;
+      padding: .15rem .6rem;
+      border-radius: 4px;
+      font-size: .68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: .5rem;
+    }
+
+    .rp-event-badge.blocked {
+      background: rgba(239,68,68,.12);
+      color: var(--danger);
+      border: 1px solid rgba(239,68,68,.25);
+    }
+
+    .rp-event-badge.enabled {
+      background: rgba(16,185,129,.12);
+      color: var(--success);
+      border: 1px solid rgba(16,185,129,.25);
+    }
+
+    .rp-event-badge.cascade {
+      background: rgba(99,102,241,.12);
+      color: var(--accent);
+      border: 1px solid rgba(99,102,241,.25);
+    }
+
+    .rp-event-badge.narration {
+      background: rgba(148,163,184,.1);
+      color: var(--text-dim);
+      border: 1px solid rgba(148,163,184,.2);
+    }
+
+    .rp-event-title {
+      font-size: .95rem;
+      font-weight: 700;
+      margin-bottom: .15rem;
+    }
+
+    .rp-event-team {
+      font-size: .75rem;
+      color: var(--text-dim);
+      margin-bottom: .4rem;
+    }
+
+    .rp-event-team span { font-weight: 600; color: var(--text); }
+
+    .rp-event-message {
+      font-size: .78rem;
+      color: var(--text-dim);
+      line-height: 1.65;
+      margin-bottom: .5rem;
+    }
+
+    .rp-prereq-list {
+      display: flex;
+      gap: .35rem;
+      flex-wrap: wrap;
+      margin-bottom: .4rem;
+    }
+
+    .rp-prereq-chip {
+      font-size: .66rem;
+      padding: .15rem .55rem;
+      border-radius: 999px;
+      font-weight: 600;
+      border: 1px solid;
+    }
+
+    .rp-prereq-chip.met { border-color: var(--success); color: var(--success); background: rgba(16,185,129,.08); }
+    .rp-prereq-chip.unmet { border-color: var(--danger); color: var(--danger); background: rgba(239,68,68,.06); }
+
+    .rp-cascade-list {
+      display: flex;
+      flex-direction: column;
+      gap: .3rem;
+    }
+
+    .rp-cascade-item {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-size: .78rem;
+      font-weight: 500;
+      padding: .3rem .6rem;
+      border-radius: 6px;
+      background: rgba(16,185,129,.06);
+      border: 1px solid rgba(16,185,129,.15);
+      animation: cascade-pop .3s ease-out;
+    }
+
+    .rp-cascade-item .ci-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      flex-shrink: 0;
+    }
+
+    .rp-cascade-item .ci-team {
+      color: var(--text-dim);
+      font-size: .68rem;
+      font-weight: 400;
+      margin-left: auto;
+    }
+
+    @keyframes cascade-pop {
+      0%   { opacity: 0; transform: translateX(-8px); }
+      100% { opacity: 1; transform: translateX(0); }
+    }
+
+    /* Right side: event log */
+    .rp-log-container { min-width: 0; }
+
+    .rp-log-title {
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-dim);
+      margin-bottom: .4rem;
+    }
+
+    .rp-log {
+      max-height: 180px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      padding: .4rem;
+    }
+
+    .rp-log-entry {
+      padding: .25rem .5rem;
+      font-size: .7rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-dim);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      animation: fade-in .25s ease-out;
+    }
+
+    .rp-log-entry .le-marker {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .rp-log-entry.blocked .le-marker { background: var(--danger); }
+    .rp-log-entry.enabled .le-marker { background: var(--success); }
+    .rp-log-entry.cascade .le-marker { background: var(--accent); }
+    .rp-log-entry.narration .le-marker { background: #475569; }
+
+    .rp-log-entry .le-label {
+      font-weight: 600;
+      font-size: .62rem;
+      text-transform: uppercase;
+      min-width: 52px;
+    }
+
+    .rp-log-entry.blocked .le-label { color: var(--danger); }
+    .rp-log-entry.enabled .le-label { color: var(--success); }
+    .rp-log-entry.cascade .le-label { color: var(--accent); }
+    .rp-log-entry.narration .le-label { color: #475569; }
+
+    .rp-complete {
+      text-align: center;
+      padding: 1.5rem 1rem;
+    }
+
+    .rp-complete h4 { font-size: 1rem; color: var(--success); margin-bottom: .35rem; }
+    .rp-complete p { font-size: .82rem; color: var(--text-dim); line-height: 1.6; }
+
+    /* ── Transport Controls ────────────────────────────────────────────── */
+    .transport-controls {
+      padding: 1rem 1.25rem !important;
+    }
+
+    .transport-row {
+      display: flex;
+      justify-content: center;
+      gap: .5rem;
+      margin-bottom: .6rem;
+    }
+
+    .transport-btn {
+      width: 44px;
+      height: 36px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .transport-btn.play-pause {
+      width: 56px;
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .transport-btn.play-pause:hover {
+      background: #4f46e5;
+    }
+
+    .transport-label {
+      text-align: center;
+      font-size: .75rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-dim);
+      margin-bottom: .6rem;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <rect width="28" height="28" rx="6" fill="#6366f1"/>
+      <path d="M8 8h4l4 6-4 6H8l4-6-4-6z" fill="#fff"/>
+      <path d="M14 8h4l4 6-4 6h-4l4-6-4-6z" fill="#fff" opacity=".5"/>
+    </svg>
+    <span>LD Orchestration</span>
+  </div>
+  <div class="nav-links">
+    <a href="/">Dashboard</a>
+    <a href="/viz.html" class="active">Dependency Graph</a>
+  </div>
+</nav>
+
+<div class="viz-container">
+
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h2>Flag Dependency Graph</h2>
+      <p>Visualizing prerequisite relationships across all 5 engineering teams for the Checkout v2 release.</p>
+    </div>
+
+    <div class="sidebar-tabs">
+      <button class="sidebar-tab active" onclick="switchSidebarTab('info')">Graph Info</button>
+      <button class="sidebar-tab" onclick="switchSidebarTab('controls')">Flag Controls</button>
+    </div>
+
+    <!-- ── Panel 1: Graph Info (legends, detail, animation controls) ── -->
+    <div class="sidebar-panel active" id="panelInfo">
+      <div class="legend">
+        <h4>Teams</h4>
+        <div id="legendTeams"></div>
+        <div class="legend-item" style="margin-top:.5rem">
+          <div class="legend-dot" style="background: #f472b6"></div>
+          <span>Master Release Gate</span>
+        </div>
+      </div>
+
+      <div class="legend">
+        <h4>Flag Status</h4>
+        <div class="legend-item">
+          <div class="legend-dot" style="background: #10b981"></div>
+          <span>Active — enabled and effective</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background: #38bdf8"></div>
+          <span>Ready — prereqs met, can enable</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background: #64748b"></div>
+          <span>Off — prereqs not yet met</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background: #f59e0b"></div>
+          <span>Blocked — on but prereqs unmet</span>
+        </div>
+      </div>
+
+      <div class="legend">
+        <h4>Edge Status</h4>
+        <div class="legend-item">
+          <div class="legend-line" style="background: var(--success)"></div>
+          <span>Prerequisite met (data flowing)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-line" style="background: #475569; background-image: repeating-linear-gradient(90deg, #475569 0 6px, transparent 6px 10px)"></div>
+          <span>Prerequisite unmet (blocked)</span>
+        </div>
+      </div>
+
+      <div class="sidebar-controls" id="defaultControls">
+        <button class="btn success" id="rolloutBtn" onclick="vizRollout()">Animate Rollout</button>
+        <button class="btn primary" onclick="vizEnableAll()">Enable All</button>
+        <button class="btn danger" onclick="vizReset()">Reset Flags</button>
+        <button class="btn" style="background:rgba(255,255,255,.06);color:var(--text-dim)" onclick="resetLayout()">Reset Layout</button>
+      </div>
+
+      <div class="sidebar-controls transport-controls" id="transportControls" style="display:none">
+        <div class="transport-row">
+          <button class="btn transport-btn" id="prevBtn" onclick="rolloutPrev()" title="Previous step">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M10 2L4 7l6 5V2z" fill="currentColor"/><rect x="2" y="2" width="2" height="10" rx="0.5" fill="currentColor"/></svg>
+          </button>
+          <button class="btn transport-btn play-pause" id="playPauseBtn" onclick="rolloutPlayPause()" title="Play / Pause">
+            <svg id="pauseIcon" width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="3" y="2" width="3" height="10" rx="0.5" fill="currentColor"/><rect x="8" y="2" width="3" height="10" rx="0.5" fill="currentColor"/></svg>
+            <svg id="playIcon" width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:none"><path d="M3 1.5l9 5.5-9 5.5V1.5z" fill="currentColor"/></svg>
+          </button>
+          <button class="btn transport-btn" id="nextBtn" onclick="rolloutNext()" title="Next step">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M4 2l6 5-6 5V2z" fill="currentColor"/><rect x="10" y="2" width="2" height="10" rx="0.5" fill="currentColor"/></svg>
+          </button>
+        </div>
+        <div class="transport-label" id="transportLabel">Step 1 / 19</div>
+        <button class="btn danger" style="width:100%;justify-content:center;font-size:.78rem" onclick="rolloutStop()">Exit Walkthrough</button>
+      </div>
+
+      <div class="node-detail empty" id="nodeDetail">
+        Click a node to see flag details
+      </div>
+    </div>
+
+    <!-- ── Panel 2: Flag Controls (toggle switches) ── -->
+    <div class="sidebar-panel flag-controls-panel" id="panelControls">
+      <div class="sidebar-controls" style="flex-shrink:0">
+        <button class="btn primary" onclick="vizEnableAll()">Enable All</button>
+        <button class="btn danger" onclick="vizReset()">Reset</button>
+      </div>
+      <div id="flagControlsList"></div>
+    </div>
+  </div>
+
+  <div class="graph-area">
+    <div class="graph-canvas" id="graphCanvas">
+      <div class="graph-tooltip" id="tooltip"></div>
+    </div>
+    <div class="rollout-panel" id="rolloutPanel"></div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+const API = '';
+let graphData = null;
+let selectedNode = null;
+let rolloutRunning = false;
+let svg, g;
+let nodeElements, linkElements, particleElements;
+const NODE_W = 190, NODE_H = 72;
+
+const LAYERS = {
+  infrastructure: { y: 0 },
+  api:            { y: 1 },
+  web:            { y: 2 },
+  mobile:         { y: 2 },
+  data:           { y: 2 },
+  all:            { y: 3 },
+};
+
+async function init() {
+  await fetchGraph();
+  buildLegend();
+  buildGraph();
+  startParticles();
+  setInterval(refreshStates, 3000);
+}
+
+async function fetchGraph() {
+  graphData = await fetch(`${API}/api/graph`).then(r => r.json());
+}
+
+async function refreshStates() {
+  if (rolloutRunning) return;
+  const fresh = await fetch(`${API}/api/graph`).then(r => r.json());
+  graphData.nodes.forEach((n, i) => {
+    n.enabled = fresh.nodes[i].enabled;
+    n.effective = fresh.nodes[i].effective;
+    n.prerequisitesMet = fresh.nodes[i].prerequisitesMet;
+    n.unmetPrereqs = fresh.nodes[i].unmetPrereqs || [];
+  });
+  graphData.links.forEach((l, i) => {
+    l.met = fresh.links[i].met;
+  });
+  updateVisuals();
+  if (selectedNode) showDetail(selectedNode);
+  if (document.getElementById('panelControls').classList.contains('active')) buildFlagControls();
+}
+
+function buildLegend() {
+  const container = document.getElementById('legendTeams');
+  Object.entries(graphData.teams).forEach(([key, team]) => {
+    container.innerHTML += `
+      <div class="legend-item">
+        <div class="legend-dot" style="background: ${team.color}"></div>
+        <span>${team.name}</span>
+      </div>`;
+  });
+}
+
+function switchSidebarTab(tab) {
+  document.querySelectorAll('.sidebar-tab').forEach((btn, i) => {
+    btn.classList.toggle('active', (tab === 'info' && i === 0) || (tab === 'controls' && i === 1));
+  });
+  document.getElementById('panelInfo').classList.toggle('active', tab === 'info');
+  document.getElementById('panelControls').classList.toggle('active', tab === 'controls');
+  if (tab === 'controls') buildFlagControls();
+}
+
+function buildFlagControls() {
+  if (!graphData) return;
+  const container = document.getElementById('flagControlsList');
+
+  const teamOrder = Object.keys(graphData.teams);
+  let html = '';
+
+  teamOrder.forEach(teamKey => {
+    const team = graphData.teams[teamKey];
+    const teamNodes = graphData.nodes.filter(n => n.team === teamKey);
+    if (!teamNodes.length) return;
+    const onCount = teamNodes.filter(n => n.enabled).length;
+
+    html += `<div class="ctrl-team-section">
+      <div class="ctrl-team-header">
+        <div class="ctrl-team-icon" style="background:${team.color}22;color:${team.color}">${team.abbr}</div>
+        <div class="ctrl-team-name">${team.name}</div>
+        <div class="ctrl-team-count" style="color:${onCount === teamNodes.length ? 'var(--success)' : 'var(--text-dim)'}">${onCount}/${teamNodes.length}</div>
+      </div>`;
+
+    teamNodes.forEach(n => {
+      const sText = statusText(n);
+      const sColor = statusColor(n);
+      const canEnable = n.prerequisitesMet;
+      const isDisabled = !canEnable && !n.enabled;
+
+      html += `<div class="ctrl-flag-row">
+        <div style="width:8px;height:8px;border-radius:50%;background:${sColor};flex-shrink:0;box-shadow:0 0 6px ${sColor}"></div>
+        <div class="ctrl-flag-info">
+          <div class="ctrl-flag-name">${n.name}</div>
+          <div class="ctrl-flag-status" style="color:${sColor}">${sText}${(!n.enabled && !n.prerequisitesMet && n.unmetPrereqs?.length) ? ' — needs ' + n.unmetPrereqs.join(', ') : ''}</div>
+        </div>
+        <label class="toggle" style="flex-shrink:0">
+          <input type="checkbox" ${n.enabled ? 'checked' : ''} ${isDisabled ? 'disabled' : ''}
+                 onchange="ctrlToggleFlag('${n.id}', this.checked)">
+          <span class="slider"></span>
+        </label>
+      </div>`;
+    });
+
+    html += '</div>';
+  });
+
+  const masterNode = graphData.nodes.find(n => n.team === 'all');
+  if (masterNode) {
+    const sText = statusText(masterNode);
+    const sColor = statusColor(masterNode);
+    const canEnable = masterNode.prerequisitesMet;
+    const isDisabled = !canEnable && !masterNode.enabled;
+
+    html += `<div class="ctrl-team-section" style="border-left:3px solid #f472b6">
+      <div class="ctrl-team-header">
+        <div class="ctrl-team-icon" style="background:rgba(244,114,182,.15);color:#f472b6;font-weight:800;font-size:.6rem">GATE</div>
+        <div class="ctrl-team-name">Master Release Gate</div>
+      </div>
+      <div class="ctrl-flag-row">
+        <div style="width:8px;height:8px;border-radius:50%;background:${sColor};flex-shrink:0;box-shadow:0 0 6px ${sColor}"></div>
+        <div class="ctrl-flag-info">
+          <div class="ctrl-flag-name">${masterNode.name}</div>
+          <div class="ctrl-flag-status" style="color:${sColor}">${sText}${(!masterNode.enabled && !masterNode.prerequisitesMet && masterNode.unmetPrereqs?.length) ? ' — needs ' + masterNode.unmetPrereqs.join(', ') : ''}</div>
+        </div>
+        <label class="toggle" style="flex-shrink:0">
+          <input type="checkbox" ${masterNode.enabled ? 'checked' : ''} ${isDisabled ? 'disabled' : ''}
+                 onchange="ctrlToggleFlag('${masterNode.id}', this.checked)">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = message;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+async function ctrlToggleFlag(key, enabled) {
+  try {
+    const res = await fetch(`${API}/api/flags/${key}/toggle`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      const node = graphData.nodes.find(n => n.id === key);
+      showToast(`Cannot enable ${node?.name || key}: prerequisites not met`, 'error');
+    }
+    await refreshStates();
+    buildFlagControls();
+  } catch (err) {
+    showToast(`Error: ${err.message}`, 'error');
+  }
+}
+
+function buildGraph() {
+  const canvas = document.getElementById('graphCanvas');
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+
+  svg = d3.select('#graphCanvas')
+    .append('svg')
+    .attr('width', width)
+    .attr('height', height);
+
+  const defs = svg.append('defs');
+
+  defs.append('marker')
+    .attr('id', 'arrow-met')
+    .attr('viewBox', '0 0 10 10')
+    .attr('refX', 10).attr('refY', 5)
+    .attr('markerWidth', 8).attr('markerHeight', 8)
+    .attr('orient', 'auto')
+    .append('path')
+    .attr('d', 'M0,0 L10,5 L0,10 Z')
+    .attr('fill', '#10b981');
+
+  defs.append('marker')
+    .attr('id', 'arrow-unmet')
+    .attr('viewBox', '0 0 10 10')
+    .attr('refX', 10).attr('refY', 5)
+    .attr('markerWidth', 8).attr('markerHeight', 8)
+    .attr('orient', 'auto')
+    .append('path')
+    .attr('d', 'M0,0 L10,5 L0,10 Z')
+    .attr('fill', '#475569');
+
+  const glow = defs.append('filter').attr('id', 'glow');
+  glow.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'blur');
+  glow.append('feMerge')
+    .selectAll('feMergeNode')
+    .data(['blur', 'SourceGraphic'])
+    .enter().append('feMergeNode')
+    .attr('in', d => d);
+
+  g = svg.append('g');
+
+  svg.call(d3.zoom()
+    .scaleExtent([0.3, 3])
+    .on('zoom', (e) => g.attr('transform', e.transform))
+  );
+
+  assignPositions(width, height);
+
+  const layerLabels = [
+    { label: 'INFRASTRUCTURE', y: 0 },
+    { label: 'CORE API', y: 1 },
+    { label: 'WEB / MOBILE / DATA', y: 2 },
+    { label: 'RELEASE GATE', y: 3 },
+  ];
+
+  const yScale = d3.scaleLinear().domain([0, 3]).range([height * 0.12, height * 0.85]);
+
+  const labelOffset = NODE_H / 2 + 18;
+
+  g.selectAll('.layer-label')
+    .data(layerLabels)
+    .enter().append('text')
+    .attr('class', 'layer-label')
+    .attr('x', 48)
+    .attr('y', d => yScale(d.y) - labelOffset)
+    .text(d => d.label);
+
+  g.selectAll('.layer-divider')
+    .data([0.5, 1.5, 2.5])
+    .enter().append('line')
+    .attr('class', 'layer-divider')
+    .attr('x1', 40).attr('x2', width - 40)
+    .attr('y1', d => yScale(d))
+    .attr('y2', d => yScale(d));
+
+  linkElements = g.selectAll('.link-group')
+    .data(graphData.links)
+    .enter().append('g')
+    .attr('class', 'link-group');
+
+  linkElements.append('path')
+    .attr('class', d => `link ${d.met ? 'met' : 'unmet'}`)
+    .attr('marker-end', d => `url(#arrow-${d.met ? 'met' : 'unmet'})`)
+    .attr('d', d => computeLinkPath(d));
+
+  particleElements = linkElements.append('circle')
+    .attr('class', 'particle')
+    .attr('r', 4)
+    .attr('filter', 'url(#glow)');
+
+  graphData.nodes.forEach(n => { n.defaultX = n.x; n.defaultY = n.y; });
+
+  let dragDidMove = false;
+
+  const dragBehavior = d3.drag()
+    .on('start', function(e) {
+      dragDidMove = false;
+      d3.select(this).raise().classed('dragging', true);
+    })
+    .on('drag', function(e, d) {
+      dragDidMove = true;
+      d.dragged = true;
+      d.x += e.dx;
+      d.y += e.dy;
+      d3.select(this).attr('transform', `translate(${d.x - NODE_W/2}, ${d.y - NODE_H/2})`);
+      linkElements.select('path').attr('d', l => computeLinkPath(l));
+    })
+    .on('end', function() {
+      d3.select(this).classed('dragging', false);
+    });
+
+  nodeElements = g.selectAll('.node-group')
+    .data(graphData.nodes)
+    .enter().append('g')
+    .attr('class', 'node-group')
+    .attr('transform', d => `translate(${d.x - NODE_W/2}, ${d.y - NODE_H/2})`)
+    .on('click', (e, d) => {
+      if (dragDidMove) return;
+      selectedNode = d.id; showDetail(d.id); highlightNode(d.id);
+    })
+    .on('mouseenter', (e, d) => showTooltip(e, d))
+    .on('mouseleave', hideTooltip)
+    .call(dragBehavior);
+
+  nodeElements.append('rect')
+    .attr('class', 'node-rect')
+    .attr('width', NODE_W)
+    .attr('height', NODE_H)
+    .attr('fill', d => d.enabled ? d.teamColor : shadeColor(d.teamColor, -50))
+    .attr('stroke', d => d.teamColor)
+    .attr('opacity', d => d.enabled ? 1 : .55);
+
+  // Status indicator: small text label
+  nodeElements.append('text')
+    .attr('class', 'node-status-label')
+    .attr('x', NODE_W / 2)
+    .attr('y', 14)
+    .attr('fill', d => statusColor(d))
+    .text(d => statusText(d));
+
+  nodeElements.append('text')
+    .attr('class', 'node-label')
+    .attr('x', NODE_W / 2)
+    .attr('y', 30)
+    .text(d => truncate(d.name, 24));
+
+  nodeElements.append('text')
+    .attr('class', 'node-team-label')
+    .attr('x', NODE_W / 2)
+    .attr('y', 44)
+    .text(d => {
+      if (d.team === 'all') return 'Master Gate';
+      const t = graphData.teams[d.team];
+      return t ? t.name : d.team;
+    });
+
+  nodeElements.append('text')
+    .attr('class', 'node-blocker-label')
+    .attr('x', NODE_W / 2)
+    .attr('y', 60)
+    .attr('fill', d => {
+      if (!d.enabled && d.prerequisitesMet) return '#38bdf8';
+      return '#ef4444';
+    })
+    .text(d => truncate(blockerLine(d), 28));
+
+  updateVisuals();
+}
+
+function statusText(d) {
+  if (d.enabled && d.effective) return 'ACTIVE';
+  if (d.enabled && !d.effective) return 'BLOCKED';
+  if (!d.enabled && d.prerequisitesMet) return 'READY';
+  return 'OFF';
+}
+
+function statusColor(d) {
+  if (d.enabled && d.effective) return '#10b981';
+  if (d.enabled && !d.effective) return '#f59e0b';
+  if (!d.enabled && d.prerequisitesMet) return '#38bdf8';
+  return '#64748b';
+}
+
+function blockerLine(d) {
+  if (d.enabled && d.effective) return '';
+  if (d.enabled && !d.effective) {
+    const names = (d.unmetPrereqs || []);
+    return names.length ? 'Needs: ' + names.join(', ') : 'Blocked';
+  }
+  if (!d.enabled && !d.prerequisitesMet) {
+    const names = (d.unmetPrereqs || []);
+    return names.length ? 'Needs: ' + names.join(', ') : '';
+  }
+  if (!d.enabled && d.prerequisitesMet) return 'All prereqs met';
+  return '';
+}
+
+function assignPositions(width, height) {
+  const yScale = d3.scaleLinear().domain([0, 3]).range([height * 0.12, height * 0.85]);
+  const layerNodes = {};
+  graphData.nodes.forEach(n => {
+    const layer = LAYERS[n.team]?.y ?? 2;
+    if (!layerNodes[layer]) layerNodes[layer] = [];
+    layerNodes[layer].push(n);
+  });
+
+  Object.entries(layerNodes).forEach(([layer, nodes]) => {
+    const y = yScale(Number(layer));
+    const totalW = nodes.length * (NODE_W + 40) - 40;
+    const startX = (width - totalW) / 2 + NODE_W / 2;
+    nodes.forEach((n, i) => {
+      n.x = startX + i * (NODE_W + 40);
+      n.y = y;
+    });
+  });
+}
+
+function resetLayout() {
+  graphData.nodes.forEach(n => { n.x = n.defaultX; n.y = n.defaultY; n.dragged = false; });
+  nodeElements
+    .transition().duration(500).ease(d3.easeCubicOut)
+    .attr('transform', d => `translate(${d.x - NODE_W/2}, ${d.y - NODE_H/2})`);
+  linkElements.select('path')
+    .transition().duration(500).ease(d3.easeCubicOut)
+    .attr('d', d => computeLinkPath(d));
+}
+
+function computeLinkPath(link) {
+  const source = graphData.nodes.find(n => n.id === (link.source.id || link.source));
+  const target = graphData.nodes.find(n => n.id === (link.target.id || link.target));
+  if (!source || !target) return '';
+
+  const sx = source.x, sy = source.y + NODE_H / 2;
+  const tx = target.x, ty = target.y - NODE_H / 2 - 10;
+  const midY = (sy + ty) / 2;
+
+  return `M${sx},${sy} C${sx},${midY} ${tx},${midY} ${tx},${ty}`;
+}
+
+function updateVisuals() {
+  if (!nodeElements) return;
+
+  nodeElements.select('.node-rect')
+    .transition().duration(400)
+    .attr('fill', d => d.enabled ? d.teamColor : shadeColor(d.teamColor, -50))
+    .attr('opacity', d => d.enabled ? 1 : .55)
+    .attr('stroke', d => {
+      if (d.enabled && d.effective) return '#10b981';
+      if (d.enabled && !d.effective) return '#f59e0b';
+      if (!d.enabled && d.prerequisitesMet) return '#38bdf8';
+      return d.teamColor;
+    })
+    .attr('stroke-width', d => {
+      if (d.enabled && d.effective) return 3;
+      if (!d.enabled && d.prerequisitesMet) return 2.5;
+      return 2;
+    })
+    .attr('stroke-dasharray', d => {
+      if (!d.enabled && d.prerequisitesMet) return '4 2';
+      return null;
+    });
+
+  nodeElements.select('.node-status-label')
+    .text(d => statusText(d))
+    .attr('fill', d => statusColor(d));
+
+  nodeElements.select('.node-blocker-label')
+    .text(d => truncate(blockerLine(d), 28))
+    .attr('fill', d => {
+      if (!d.enabled && d.prerequisitesMet) return '#38bdf8';
+      return '#ef4444';
+    });
+
+  linkElements.select('.link')
+    .attr('class', d => `link ${d.met ? 'met' : 'unmet'}`)
+    .attr('marker-end', d => `url(#arrow-${d.met ? 'met' : 'unmet'})`);
+}
+
+// ── Particle Animation ──────────────────────────────────────────────────
+
+function startParticles() {
+  particleElements.each(function(d) {
+    const el = d3.select(this);
+    if (!d.met) { el.classed('active', false); return; }
+    el.classed('active', true);
+
+    const pathEl = d3.select(this.parentNode).select('path').node();
+    if (!pathEl) return;
+    const len = pathEl.getTotalLength();
+
+    function run() {
+      if (!d.met) { el.classed('active', false); return; }
+      el.classed('active', true);
+      el.transition()
+        .duration(1500 + Math.random() * 1000)
+        .ease(d3.easeLinear)
+        .attrTween('transform', () => (t) => {
+          const p = pathEl.getPointAtLength(t * len);
+          return `translate(${p.x}, ${p.y})`;
+        })
+        .on('end', run);
+    }
+    run();
+  });
+}
+
+// ── Node Detail ─────────────────────────────────────────────────────────
+
+function showDetail(nodeId) {
+  const node = graphData.nodes.find(n => n.id === nodeId);
+  if (!node) return;
+
+  const flag = node;
+  const teamName = flag.team === 'all' ? 'Master Release Gate'
+    : (graphData.teams[flag.team]?.name || flag.team);
+
+  const prereqs = graphData.links
+    .filter(l => (l.target.id || l.target) === nodeId)
+    .map(l => {
+      const src = graphData.nodes.find(n => n.id === (l.source.id || l.source));
+      return src ? { ...src, met: l.met } : null;
+    })
+    .filter(Boolean);
+
+  const dependents = graphData.links
+    .filter(l => (l.source.id || l.source) === nodeId)
+    .map(l => {
+      const tgt = graphData.nodes.find(n => n.id === (l.target.id || l.target));
+      return tgt ? { ...tgt, met: l.met } : null;
+    })
+    .filter(Boolean);
+
+  const container = document.getElementById('nodeDetail');
+  container.className = 'node-detail';
+
+  let sColor = statusColor(flag);
+  let sText = statusText(flag);
+
+  const unmetNames = (flag.unmetPrereqs || []);
+  const blockerHtml = (!flag.enabled && !flag.prerequisitesMet && unmetNames.length)
+    ? `<div style="margin-top:.4rem;padding:.35rem .5rem;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:6px;font-size:.75rem;color:#fca5a5">
+        <strong>Blocked by:</strong> ${unmetNames.join(', ')}
+       </div>`
+    : (!flag.enabled && flag.prerequisitesMet)
+    ? `<div style="margin-top:.4rem;padding:.35rem .5rem;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.25);border-radius:6px;font-size:.75rem;color:#7dd3fc">
+        All prerequisites met — ready to enable
+       </div>`
+    : '';
+
+  container.innerHTML = `
+    <div class="detail-header">
+      <div class="detail-dot" style="background: ${sColor}; box-shadow: 0 0 8px ${sColor}"></div>
+      <h3>${flag.name}</h3>
+    </div>
+    <div class="detail-meta">
+      <strong>Key:</strong> <code style="color:var(--accent)">${flag.id}</code><br>
+      <strong>Team:</strong> ${teamName}<br>
+      <strong>Status:</strong> <span style="color:${sColor}">${sText}</span><br>
+      <strong>Description:</strong> ${flag.description}
+    </div>
+    ${blockerHtml}
+    ${prereqs.length ? `
+      <div class="detail-prereqs">
+        <h4>Prerequisites (${prereqs.length})</h4>
+        ${prereqs.map(p => `
+          <span class="dep-chip" onclick="selectedNode='${p.id}';showDetail('${p.id}');highlightNode('${p.id}')">
+            <span class="chip-dot" style="background: ${p.enabled ? '#10b981' : '#ef4444'}"></span>
+            ${truncate(p.name, 20)}
+          </span>
+        `).join('')}
+      </div>
+    ` : ''}
+    ${dependents.length ? `
+      <div class="detail-dependents">
+        <h4>Dependents (${dependents.length})</h4>
+        ${dependents.map(d => `
+          <span class="dep-chip" onclick="selectedNode='${d.id}';showDetail('${d.id}');highlightNode('${d.id}')">
+            <span class="chip-dot" style="background: ${d.enabled ? '#10b981' : '#475569'}"></span>
+            ${truncate(d.name, 20)}
+          </span>
+        `).join('')}
+      </div>
+    ` : ''}
+  `;
+}
+
+function highlightNode(nodeId) {
+  nodeElements.select('.node-rect')
+    .transition().duration(200)
+    .attr('opacity', d => d.id === nodeId ? 1 : (d.enabled ? .8 : .35));
+
+  linkElements.select('.link')
+    .transition().duration(200)
+    .attr('opacity', d => {
+      const src = d.source.id || d.source;
+      const tgt = d.target.id || d.target;
+      return (src === nodeId || tgt === nodeId) ? 1 : .15;
+    });
+
+  setTimeout(() => {
+    nodeElements.select('.node-rect')
+      .transition().duration(400)
+      .attr('opacity', d => d.enabled ? 1 : .55);
+    linkElements.select('.link')
+      .transition().duration(400)
+      .attr('opacity', d => d.met ? .7 : .5);
+  }, 2000);
+}
+
+// ── Tooltip ─────────────────────────────────────────────────────────────
+
+function showTooltip(event, d) {
+  const tooltip = document.getElementById('tooltip');
+  const teamName = d.team === 'all' ? 'Master Gate' : (graphData.teams[d.team]?.name || d.team);
+  const sText = statusText(d);
+  const sColor = statusColor(d);
+
+  tooltip.innerHTML = `
+    <div class="tt-name">${d.name}</div>
+    <div class="tt-desc">${d.description}</div>
+    <div class="tt-status">${teamName} &middot; <span style="color:${sColor}">${sText}</span></div>
+  `;
+  tooltip.classList.add('visible');
+
+  const rect = document.getElementById('graphCanvas').getBoundingClientRect();
+  tooltip.style.left = `${event.clientX - rect.left + 15}px`;
+  tooltip.style.top = `${event.clientY - rect.top - 10}px`;
+}
+
+function hideTooltip() {
+  document.getElementById('tooltip').classList.remove('visible');
+}
+
+// ── Rollout Narration Panel ─────────────────────────────────────────────
+
+let rolloutLogEntries = [];
+
+function openRolloutPanel() {
+  document.getElementById('rolloutPanel').classList.add('open');
+}
+
+function closeRolloutPanel() {
+  document.getElementById('rolloutPanel').classList.remove('open');
+}
+
+function addLogEntry(type, text) {
+  rolloutLogEntries.push({ type, text });
+}
+
+function buildLogHtml() {
+  return rolloutLogEntries.map(e =>
+    `<div class="rp-log-entry ${e.type}">
+      <span class="le-marker"></span>
+      <span class="le-label">${e.type}</span>
+      <span>${e.text}</span>
+    </div>`
+  ).join('');
+}
+
+function scrollLogToBottom() {
+  const el = document.querySelector('.rp-log');
+  if (el) el.scrollTop = el.scrollHeight;
+}
+
+function renderNarration(event, stepIdx, totalSteps) {
+  const panel = document.getElementById('rolloutPanel');
+  const pct = Math.round(((stepIdx + 1) / totalSteps) * 100);
+  addLogEntry('narration', event.title);
+
+  panel.innerHTML = `
+    <div class="rp-header">
+      <h3>Orchestration Scenario</h3>
+      <span class="rp-step-counter">${stepIdx + 1} / ${totalSteps}</span>
+    </div>
+    <div class="rp-progress"><div class="rp-progress-fill" style="width:${pct}%"></div></div>
+    <div class="rp-body">
+      <div class="rp-event">
+        <div class="rp-event-badge narration">Context</div>
+        <div class="rp-event-title">${event.title}</div>
+        <div class="rp-event-message">${event.message}</div>
+      </div>
+      <div class="rp-log-container">
+        <div class="rp-log-title">Event Log</div>
+        <div class="rp-log">${buildLogHtml()}</div>
+      </div>
+    </div>`;
+  scrollLogToBottom();
+}
+
+function renderBlocked(event, stepIdx, totalSteps) {
+  const panel = document.getElementById('rolloutPanel');
+  const pct = Math.round(((stepIdx + 1) / totalSteps) * 100);
+  addLogEntry('blocked', `${event.name} -- gated`);
+
+  const prereqChips = (event.prereqKeys || []).map(k => {
+    const node = graphData.nodes.find(n => n.id === k);
+    const met = node && node.enabled;
+    return `<span class="rp-prereq-chip ${met ? 'met' : 'unmet'}">${node ? truncate(node.name, 22) : k}</span>`;
+  }).join('');
+
+  const waitingCount = (event.dependents || []).length;
+  const waitingNote = waitingCount
+    ? `<div style="font-size:.72rem;color:var(--text-dim);margin-top:.4rem">${waitingCount} downstream flag${waitingCount > 1 ? 's' : ''} also waiting on these prerequisites.</div>`
+    : '';
+
+  panel.innerHTML = `
+    <div class="rp-header">
+      <h3>Orchestration Scenario</h3>
+      <span class="rp-step-counter">${stepIdx + 1} / ${totalSteps}</span>
+    </div>
+    <div class="rp-progress"><div class="rp-progress-fill" style="width:${pct}%"></div></div>
+    <div class="rp-body">
+      <div class="rp-event">
+        <div class="rp-event-badge blocked">Blocked</div>
+        <div class="rp-event-title">${event.name}</div>
+        <div class="rp-event-team">Team: <span>${event.team}</span></div>
+        <div class="rp-event-message">${event.message}</div>
+        ${prereqChips ? `<div style="font-size:.7rem;color:var(--text-dim);margin-bottom:.3rem">Waiting on prerequisites:</div><div class="rp-prereq-list">${prereqChips}</div>` : ''}
+        ${waitingNote}
+      </div>
+      <div class="rp-log-container">
+        <div class="rp-log-title">Event Log</div>
+        <div class="rp-log">${buildLogHtml()}</div>
+      </div>
+    </div>`;
+  scrollLogToBottom();
+}
+
+function renderEnable(event, stepIdx, totalSteps) {
+  const panel = document.getElementById('rolloutPanel');
+  const pct = Math.round(((stepIdx + 1) / totalSteps) * 100);
+  addLogEntry('enabled', event.name);
+
+  const depsList = (event.dependents || []).length
+    ? `<div style="font-size:.72rem;color:var(--text-dim);margin-top:.4rem">Contributes to unblocking: <span style="color:var(--text)">${event.dependents.map(d => d.name).join(', ')}</span></div>`
+    : '';
+
+  panel.innerHTML = `
+    <div class="rp-header">
+      <h3>Orchestration Scenario</h3>
+      <span class="rp-step-counter">${stepIdx + 1} / ${totalSteps}</span>
+    </div>
+    <div class="rp-progress"><div class="rp-progress-fill" style="width:${pct}%"></div></div>
+    <div class="rp-body">
+      <div class="rp-event">
+        <div class="rp-event-badge enabled">Enabled</div>
+        <div class="rp-event-title">${event.name}</div>
+        <div class="rp-event-team">Team: <span>${event.team}</span></div>
+        <div class="rp-event-message">${event.message}</div>
+        ${depsList}
+      </div>
+      <div class="rp-log-container">
+        <div class="rp-log-title">Event Log</div>
+        <div class="rp-log">${buildLogHtml()}</div>
+      </div>
+    </div>`;
+  scrollLogToBottom();
+}
+
+function renderCascade(event, stepIdx, totalSteps) {
+  const panel = document.getElementById('rolloutPanel');
+  const pct = Math.round(((stepIdx + 1) / totalSteps) * 100);
+  const names = event.flags.map(f => f.name);
+  addLogEntry('cascade', `${names.length} flags unlocked`);
+
+  const cascadeItems = event.flags.map(f =>
+    `<div class="rp-cascade-item">
+      <span class="ci-dot"></span>
+      <span>${f.name}</span>
+      <span class="ci-team">${f.team}</span>
+    </div>`
+  ).join('');
+
+  panel.innerHTML = `
+    <div class="rp-header">
+      <h3>Orchestration Scenario</h3>
+      <span class="rp-step-counter">${stepIdx + 1} / ${totalSteps}</span>
+    </div>
+    <div class="rp-progress"><div class="rp-progress-fill" style="width:${pct}%"></div></div>
+    <div class="rp-body">
+      <div class="rp-event">
+        <div class="rp-event-badge cascade">Gate Opened &mdash; ${names.length} Flags Unlock</div>
+        <div class="rp-event-message" style="margin-top:.5rem">${event.message}</div>
+        <div class="rp-cascade-list" style="margin-top:.5rem">${cascadeItems}</div>
+      </div>
+      <div class="rp-log-container">
+        <div class="rp-log-title">Event Log</div>
+        <div class="rp-log">${buildLogHtml()}</div>
+      </div>
+    </div>`;
+  scrollLogToBottom();
+}
+
+function renderComplete(totalSteps) {
+  const panel = document.getElementById('rolloutPanel');
+  panel.innerHTML = `
+    <div class="rp-header">
+      <h3>Orchestration Scenario</h3>
+      <span class="rp-step-counter">${totalSteps} / ${totalSteps}</span>
+    </div>
+    <div class="rp-progress"><div class="rp-progress-fill" style="width:100%"></div></div>
+    <div class="rp-body">
+      <div class="rp-complete">
+        <h4>Rollout Complete</h4>
+        <p>All 13 flags across 5 teams are active. Prerequisite gates ensured no feature shipped before its dependencies were ready — even as teams worked at different speeds.</p>
+      </div>
+      <div class="rp-log-container">
+        <div class="rp-log-title">Event Log</div>
+        <div class="rp-log">${buildLogHtml()}</div>
+      </div>
+    </div>`;
+  scrollLogToBottom();
+}
+
+// ── Graph highlight helpers ─────────────────────────────────────────────
+
+function highlightFlags(keys, dimOthers = true) {
+  const keySet = new Set(keys);
+  nodeElements.select('.node-rect')
+    .transition().duration(300)
+    .attr('opacity', d => keySet.has(d.id) ? 1 : (dimOthers ? .25 : (d.enabled ? 1 : .55)));
+  linkElements.select('.link')
+    .transition().duration(300)
+    .attr('opacity', d => {
+      const src = d.source.id || d.source;
+      const tgt = d.target.id || d.target;
+      return (keySet.has(src) || keySet.has(tgt)) ? .8 : .1;
+    });
+}
+
+function flashNodes(keys) {
+  keys.forEach(k => {
+    const node = nodeElements.filter(d => d.id === k);
+    node.select('.node-rect')
+      .transition().duration(200)
+      .attr('stroke-width', 5)
+      .transition().duration(600)
+      .attr('stroke-width', d => (d.enabled && d.effective) ? 3 : 2);
+  });
+}
+
+function restoreOpacity() {
+  nodeElements.select('.node-rect')
+    .transition().duration(400)
+    .attr('opacity', d => d.enabled ? 1 : .55);
+  linkElements.select('.link')
+    .transition().duration(400)
+    .attr('opacity', d => d.met ? .7 : .5)
+    .attr('stroke-width', 2);
+}
+
+async function syncGraph() {
+  const snap = await fetch(`${API}/api/graph`).then(r => r.json());
+  graphData.nodes.forEach((n, i) => {
+    n.enabled = snap.nodes[i].enabled;
+    n.effective = snap.nodes[i].effective;
+    n.prerequisitesMet = snap.nodes[i].prerequisitesMet;
+    n.unmetPrereqs = snap.nodes[i].unmetPrereqs || [];
+  });
+  graphData.links.forEach((l, i) => { l.met = snap.links[i].met; });
+  updateVisuals();
+}
+
+async function enableFlag(key) {
+  await fetch(`${API}/api/flags/${key}/toggle`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled: true }),
+  });
+}
+
+// ── Rollout State Machine ────────────────────────────────────────────────
+
+let scenarioSteps = [];
+let scenarioIdx = -1;
+let autoPlaying = false;
+let autoPlayTimer = null;
+
+function showTransportControls() {
+  document.getElementById('defaultControls').style.display = 'none';
+  document.getElementById('transportControls').style.display = '';
+}
+
+function hideTransportControls() {
+  document.getElementById('defaultControls').style.display = '';
+  document.getElementById('transportControls').style.display = 'none';
+}
+
+function updateTransportUI() {
+  const total = scenarioSteps.length;
+  const idx = scenarioIdx;
+  document.getElementById('transportLabel').textContent =
+    idx >= total ? `Complete (${total} steps)` : `Step ${idx + 1} / ${total}`;
+  document.getElementById('prevBtn').disabled = idx <= 0;
+  document.getElementById('nextBtn').disabled = idx >= total;
+
+  const pauseIcon = document.getElementById('pauseIcon');
+  const playIcon = document.getElementById('playIcon');
+  if (autoPlaying) {
+    pauseIcon.style.display = '';
+    playIcon.style.display = 'none';
+  } else {
+    pauseIcon.style.display = 'none';
+    playIcon.style.display = '';
+  }
+}
+
+// Execute one step's visual effects + flag changes. Animate controls
+// whether to run the transition animations or skip them (for replay).
+async function executeStep(idx, animate) {
+  if (idx < 0 || idx >= scenarioSteps.length) return;
+  const event = scenarioSteps[idx];
+  const total = scenarioSteps.length;
+
+  if (event.type === 'narration') {
+    renderNarration(event, idx, total);
+    if (animate) restoreOpacity();
+
+  } else if (event.type === 'blocked') {
+    renderBlocked(event, idx, total);
+    if (animate) {
+      const prereqKeys = event.prereqKeys || [];
+      highlightFlags([event.key, ...prereqKeys]);
+
+      const blockedNode = nodeElements.filter(d => d.id === event.key);
+      blockedNode.select('.node-rect')
+        .transition().duration(300)
+        .attr('stroke', '#ef4444')
+        .attr('stroke-width', 4)
+        .transition().duration(600)
+        .attr('stroke', d => d.teamColor)
+        .attr('stroke-width', 2);
+    }
+
+  } else if (event.type === 'enable') {
+    await enableFlag(event.key);
+    await syncGraph();
+    renderEnable(event, idx, total);
+    if (animate) {
+      highlightFlags([event.key]);
+      flashNodes([event.key]);
+    }
+
+  } else if (event.type === 'cascade') {
+    const keys = event.flags.map(f => f.key);
+    await Promise.all(keys.map(k => enableFlag(k)));
+    await syncGraph();
+    renderCascade(event, idx, total);
+    if (animate) {
+      highlightFlags(keys);
+      flashNodes(keys);
+    }
+  }
+
+  if (animate) {
+    // Let animation play, then restore
+    await new Promise(r => setTimeout(r, 500));
+    restoreOpacity();
+    updateVisuals();
+  }
+}
+
+// Replay flag state from scratch up to (but not including) targetIdx,
+// then execute targetIdx with animations.
+async function jumpToStep(targetIdx) {
+  await fetch(`${API}/api/flags/reset`, { method: 'POST' });
+  rolloutLogEntries = [];
+
+  // Silently replay all flag-changing steps before targetIdx
+  for (let i = 0; i < targetIdx; i++) {
+    const ev = scenarioSteps[i];
+    if (ev.type === 'enable') {
+      await enableFlag(ev.key);
+    } else if (ev.type === 'cascade') {
+      await Promise.all(ev.flags.map(f => enableFlag(f.key)));
+    }
+    // Rebuild log entries
+    if (ev.type === 'narration') addLogEntry('narration', ev.title);
+    else if (ev.type === 'blocked') addLogEntry('blocked', `${ev.name} -- gated`);
+    else if (ev.type === 'enable') addLogEntry('enabled', ev.name);
+    else if (ev.type === 'cascade') addLogEntry('cascade', `${ev.flags.length} flags unlocked`);
+  }
+
+  await syncGraph();
+  scenarioIdx = targetIdx;
+  updateTransportUI();
+  await executeStep(targetIdx, true);
+}
+
+function scheduleAutoAdvance() {
+  if (autoPlayTimer) clearTimeout(autoPlayTimer);
+  if (!autoPlaying || scenarioIdx >= scenarioSteps.length - 1) {
+    if (scenarioIdx >= scenarioSteps.length - 1) {
+      autoPlaying = false;
+      updateTransportUI();
+      renderComplete(scenarioSteps.length);
+    }
+    return;
+  }
+
+  const event = scenarioSteps[scenarioIdx];
+  let delay = 1500;
+  if (event.type === 'narration') delay = 2500;
+  else if (event.type === 'blocked') delay = 2200;
+  else if (event.type === 'enable') delay = 1000;
+  else if (event.type === 'cascade') delay = 1500;
+
+  autoPlayTimer = setTimeout(async () => {
+    if (!autoPlaying) return;
+    await rolloutNext();
+    scheduleAutoAdvance();
+  }, delay);
+}
+
+// ── Transport Controls ──────────────────────────────────────────────────
+
+async function vizReset() {
+  rolloutStop();
+  await fetch(`${API}/api/flags/reset`, { method: 'POST' });
+  await refreshStates();
+}
+
+async function vizEnableAll() {
+  rolloutStop();
+  await fetch(`${API}/api/flags/enable-all`, { method: 'POST' });
+  await refreshStates();
+}
+
+async function vizRollout() {
+  if (rolloutRunning) return;
+  rolloutRunning = true;
+  rolloutLogEntries = [];
+  scenarioIdx = -1;
+
+  scenarioSteps = await fetch(`${API}/api/flags/scenario`).then(r => r.json());
+  await fetch(`${API}/api/flags/reset`, { method: 'POST' });
+  await syncGraph();
+
+  showTransportControls();
+  openRolloutPanel();
+
+  autoPlaying = true;
+  await rolloutNext();
+  scheduleAutoAdvance();
+}
+
+async function rolloutNext() {
+  if (scenarioIdx >= scenarioSteps.length - 1) {
+    renderComplete(scenarioSteps.length);
+    autoPlaying = false;
+    updateTransportUI();
+    return;
+  }
+  scenarioIdx++;
+  updateTransportUI();
+  await executeStep(scenarioIdx, true);
+}
+
+async function rolloutPrev() {
+  if (scenarioIdx <= 0) return;
+  // Pause auto-play when user manually navigates
+  autoPlaying = false;
+  if (autoPlayTimer) clearTimeout(autoPlayTimer);
+  await jumpToStep(scenarioIdx - 1);
+}
+
+function rolloutPlayPause() {
+  autoPlaying = !autoPlaying;
+  updateTransportUI();
+  if (autoPlaying) {
+    scheduleAutoAdvance();
+  } else {
+    if (autoPlayTimer) clearTimeout(autoPlayTimer);
+  }
+}
+
+function rolloutStop() {
+  autoPlaying = false;
+  rolloutRunning = false;
+  scenarioSteps = [];
+  scenarioIdx = -1;
+  if (autoPlayTimer) clearTimeout(autoPlayTimer);
+  hideTransportControls();
+  closeRolloutPanel();
+  restoreOpacity();
+  updateVisuals();
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────────
+
+function truncate(str, max) {
+  return str.length > max ? str.slice(0, max - 1) + '...' : str;
+}
+
+function shadeColor(hex, percent) {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const amt = Math.round(2.55 * percent);
+  const R = Math.max(0, Math.min(255, (num >> 16) + amt));
+  const G = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amt));
+  const B = Math.max(0, Math.min(255, (num & 0x0000FF) + amt));
+  return `#${(1 << 24 | R << 16 | G << 8 | B).toString(16).slice(1)}`;
+}
+
+window.addEventListener('resize', () => {
+  const canvas = document.getElementById('graphCanvas');
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  svg.attr('width', w).attr('height', h);
+
+  const savedDragged = {};
+  graphData.nodes.forEach(n => { if (n.dragged) savedDragged[n.id] = { x: n.x, y: n.y }; });
+
+  assignPositions(w, h);
+
+  graphData.nodes.forEach(n => {
+    n.defaultX = n.x; n.defaultY = n.y;
+    if (savedDragged[n.id]) { n.x = savedDragged[n.id].x; n.y = savedDragged[n.id].y; n.dragged = true; }
+  });
+
+  nodeElements.attr('transform', d => `translate(${d.x - NODE_W/2}, ${d.y - NODE_H/2})`);
+  linkElements.select('path').attr('d', d => computeLinkPath(d));
+
+  const yScaleR = d3.scaleLinear().domain([0, 3]).range([h * 0.12, h * 0.85]);
+  const loR = NODE_H / 2 + 18;
+  g.selectAll('.layer-label').each(function(d) {
+    d3.select(this).attr('y', yScaleR(d.y) - loR);
+  });
+  g.selectAll('.layer-divider')
+    .attr('x2', w - 40)
+    .attr('y1', d => yScaleR(d))
+    .attr('y2', d => yScaleR(d));
+});
+
+init();
+</script>
+</body>
+</html>

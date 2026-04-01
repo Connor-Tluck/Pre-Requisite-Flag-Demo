@@ -51,9 +51,7 @@ const TEAMS = {
   },
 };
 
-// Each flag: key, name, team, description, prerequisites (array of flag keys)
 const FLAG_DEFINITIONS = [
-  // ── Infrastructure (no prerequisites – foundational layer) ──────────────
   {
     key: 'infra-payment-gateway',
     name: 'Payment Gateway Provisioning',
@@ -75,8 +73,6 @@ const FLAG_DEFINITIONS = [
     description: 'Deploy optimized CDN rules for new checkout assets and API responses',
     prerequisites: [],
   },
-
-  // ── Core API (depends on infrastructure) ────────────────────────────────
   {
     key: 'api-payment-service-v2',
     name: 'Payment Service v2',
@@ -98,8 +94,6 @@ const FLAG_DEFINITIONS = [
     description: 'WebSocket-based inventory availability with sub-second updates',
     prerequisites: ['infra-database-migration'],
   },
-
-  // ── Web Experience (depends on API) ─────────────────────────────────────
   {
     key: 'web-checkout-redesign',
     name: 'Checkout Redesign',
@@ -114,8 +108,6 @@ const FLAG_DEFINITIONS = [
     description: 'Saved payment method one-click buy for returning customers',
     prerequisites: ['web-checkout-redesign', 'api-payment-service-v2'],
   },
-
-  // ── Mobile Engineering (depends on API) ─────────────────────────────────
   {
     key: 'mobile-checkout-flow',
     name: 'Mobile Checkout Flow',
@@ -130,8 +122,6 @@ const FLAG_DEFINITIONS = [
     description: 'Updated Apple Pay integration using new payment service with tokenization',
     prerequisites: ['mobile-checkout-flow', 'api-payment-service-v2'],
   },
-
-  // ── Data & Analytics (depends on API) ───────────────────────────────────
   {
     key: 'data-event-tracking-v2',
     name: 'Event Tracking v2',
@@ -146,8 +136,6 @@ const FLAG_DEFINITIONS = [
     description: 'Live revenue & conversion dashboard powered by streaming inventory data',
     prerequisites: ['data-event-tracking-v2', 'api-inventory-realtime'],
   },
-
-  // ── Master Release Gate ─────────────────────────────────────────────────
   {
     key: 'release-checkout-v2',
     name: 'Checkout v2 — Full Release',
@@ -161,55 +149,131 @@ const FLAG_DEFINITIONS = [
   },
 ];
 
-// ---------------------------------------------------------------------------
-//  In-memory flag state (simulation mode)
-// ---------------------------------------------------------------------------
-
-const flagState = {};
-FLAG_DEFINITIONS.forEach((f) => {
-  flagState[f.key] = false;
-});
-
-// Build a lookup map for quick access
 const flagMap = {};
-FLAG_DEFINITIONS.forEach((f) => {
-  flagMap[f.key] = f;
-});
+FLAG_DEFINITIONS.forEach((f) => { flagMap[f.key] = f; });
 
-function prerequisitesMet(flagKey) {
-  const flag = flagMap[flagKey];
+// ---------------------------------------------------------------------------
+//  Simulation mode – in-memory flag state (used when no LD keys)
+// ---------------------------------------------------------------------------
+
+const simState = {};
+FLAG_DEFINITIONS.forEach((f) => { simState[f.key] = false; });
+
+function simPrereqsMet(key) {
+  const flag = flagMap[key];
   if (!flag) return false;
-  return flag.prerequisites.every((prereq) => flagState[prereq] === true);
+  return flag.prerequisites.every((p) => simState[p] === true);
 }
 
-function getEffectiveState(flagKey) {
-  if (!flagState[flagKey]) return false;
-  return prerequisitesMet(flagKey);
+function simEffective(key) {
+  if (!simState[key]) return false;
+  return simPrereqsMet(key);
 }
 
-// When a flag is turned off, cascade: turn off all dependents
-function cascadeOff(flagKey) {
-  const turned_off = [];
+function simCascadeOff(key) {
+  const off = [];
   FLAG_DEFINITIONS.forEach((f) => {
-    if (f.prerequisites.includes(flagKey) && flagState[f.key]) {
-      flagState[f.key] = false;
-      turned_off.push(f.key);
-      turned_off.push(...cascadeOff(f.key));
+    if (f.prerequisites.includes(key) && simState[f.key]) {
+      simState[f.key] = false;
+      off.push(f.key);
+      off.push(...simCascadeOff(f.key));
     }
   });
-  return turned_off;
+  return off;
 }
 
 // ---------------------------------------------------------------------------
-//  LaunchDarkly SDK integration (optional – uses simulation if no key)
+//  LaunchDarkly live mode – SDK for evaluation, REST API for mutations
 // ---------------------------------------------------------------------------
 
 let ldClient = null;
+let ldLiveMode = false;
+
 const LD_SDK_KEY = process.env.LD_SDK_KEY;
+const LD_API_KEY = process.env.LD_API_KEY;
+const LD_PROJECT_KEY = process.env.LD_PROJECT_KEY || 'default';
+const LD_ENVIRONMENT_KEY = process.env.LD_ENVIRONMENT_KEY || 'production';
+const LD_BASE_URL = 'https://app.launchdarkly.com/api/v2';
+const LD_CONTEXT = { kind: 'user', key: 'orchestration-demo', name: 'Orchestration Demo' };
+
+// Local cache of targeting on/off state, synced with LD
+const targetingState = {};
+FLAG_DEFINITIONS.forEach((f) => { targetingState[f.key] = false; });
+
+async function ldApiCall(method, path, body) {
+  const opts = {
+    method,
+    headers: {
+      'Authorization': LD_API_KEY,
+      'Content-Type': 'application/json',
+    },
+  };
+  if (body) {
+    if (body._semanticPatch) {
+      opts.headers['Content-Type'] = 'application/json; domain-model=launchdarkly.semanticpatch';
+      delete body._semanticPatch;
+    }
+    opts.body = JSON.stringify(body);
+  }
+  const res = await fetch(`${LD_BASE_URL}${path}`, opts);
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch { data = text; }
+  return { status: res.status, ok: res.ok, data };
+}
+
+async function fetchTargetingStates() {
+  try {
+    const { ok, data } = await ldApiCall(
+      'GET',
+      `/flags/${LD_PROJECT_KEY}?tag=orchestration-demo&env=${LD_ENVIRONMENT_KEY}`
+    );
+    if (!ok || !data.items) return;
+    for (const flag of data.items) {
+      if (flag.key in targetingState) {
+        targetingState[flag.key] = flag.environments?.[LD_ENVIRONMENT_KEY]?.on ?? false;
+      }
+    }
+  } catch (err) {
+    console.error('[warn] Failed to fetch targeting states:', err.message);
+  }
+}
+
+async function ldToggleFlag(key, on) {
+  const { ok, data } = await ldApiCall('PATCH', `/flags/${LD_PROJECT_KEY}/${key}`, {
+    _semanticPatch: true,
+    environmentKey: LD_ENVIRONMENT_KEY,
+    instructions: [{ kind: on ? 'turnFlagOn' : 'turnFlagOff' }],
+  });
+  if (ok) {
+    targetingState[key] = on;
+  }
+  return { ok, data };
+}
+
+async function ldEvaluate(key) {
+  try {
+    return await ldClient.variation(key, LD_CONTEXT, false);
+  } catch {
+    return false;
+  }
+}
+
+async function ldPrereqsMet(key) {
+  const flag = flagMap[key];
+  if (!flag) return false;
+  const results = await Promise.all(flag.prerequisites.map((p) => ldEvaluate(p)));
+  return results.every(Boolean);
+}
 
 async function initLaunchDarkly() {
-  if (!LD_SDK_KEY) {
-    console.log('[info] No LD_SDK_KEY found – running in simulation mode');
+  if (!LD_SDK_KEY || !LD_API_KEY) {
+    if (LD_SDK_KEY && !LD_API_KEY) {
+      console.log('[info] LD_SDK_KEY found but no LD_API_KEY – running in simulation mode');
+      console.log('       Add LD_API_KEY to enable bidirectional sync with LaunchDarkly');
+    } else {
+      console.log('[info] No LD keys found – running in simulation mode');
+    }
     return;
   }
 
@@ -217,29 +281,59 @@ async function initLaunchDarkly() {
     const ld = await import('@launchdarkly/node-server-sdk');
     ldClient = ld.init(LD_SDK_KEY);
     await ldClient.waitForInitialization({ timeout: 10 });
-    console.log('[ok] LaunchDarkly SDK initialized');
+    console.log('[ok] LaunchDarkly SDK initialized (streaming)');
+
+    await fetchTargetingStates();
+    console.log('[ok] Flag targeting states loaded from LD REST API');
+
+    ldLiveMode = true;
+    console.log('[ok] Live mode active — bidirectional sync with LaunchDarkly');
+
+    setInterval(fetchTargetingStates, 10_000);
   } catch (err) {
     console.error('[warn] LaunchDarkly init failed – falling back to simulation mode:', err.message);
     ldClient = null;
+    ldLiveMode = false;
   }
 }
 
-const LD_CONTEXT = { kind: 'user', key: 'orchestration-demo', name: 'Orchestration Demo' };
+// ---------------------------------------------------------------------------
+//  Unified accessors – route to sim or LD depending on mode
+// ---------------------------------------------------------------------------
 
-async function evaluateFlag(flagKey) {
-  if (ldClient) {
-    try {
-      return await ldClient.variation(flagKey, LD_CONTEXT, false);
-    } catch {
-      return getEffectiveState(flagKey);
-    }
-  }
-  return getEffectiveState(flagKey);
+async function isEnabled(key) {
+  return ldLiveMode ? targetingState[key] : simState[key];
+}
+
+async function isEffective(key) {
+  if (ldLiveMode) return ldEvaluate(key);
+  return simEffective(key);
+}
+
+async function arePrereqsMet(key) {
+  if (ldLiveMode) return ldPrereqsMet(key);
+  return simPrereqsMet(key);
+}
+
+async function getUnmetPrereqs(key) {
+  const flag = flagMap[key];
+  if (!flag) return [];
+  const checks = await Promise.all(
+    flag.prerequisites.map(async (p) => ({
+      key: p,
+      met: ldLiveMode ? await ldEvaluate(p) : simState[p],
+    }))
+  );
+  return checks.filter((c) => !c.met).map((c) => flagMap[c.key]?.name || c.key);
 }
 
 // ---------------------------------------------------------------------------
 //  API Routes
 // ---------------------------------------------------------------------------
+
+app.get('/api/health', (_req, res) => {
+  res.json({ mode: ldLiveMode ? 'live' : 'simulation' });
+});
 
 app.get('/api/teams', (_req, res) => {
   res.json(TEAMS);
@@ -249,15 +343,15 @@ app.get('/api/flags', async (_req, res) => {
   const flags = await Promise.all(
     FLAG_DEFINITIONS.map(async (f) => ({
       ...f,
-      enabled: flagState[f.key],
-      effective: await evaluateFlag(f.key),
-      prerequisitesMet: prerequisitesMet(f.key),
+      enabled: await isEnabled(f.key),
+      effective: await isEffective(f.key),
+      prerequisitesMet: await arePrereqsMet(f.key),
     }))
   );
   res.json(flags);
 });
 
-app.post('/api/flags/:key/toggle', (req, res) => {
+app.post('/api/flags/:key/toggle', async (req, res) => {
   const { key } = req.params;
   const { enabled } = req.body;
 
@@ -265,57 +359,89 @@ app.post('/api/flags/:key/toggle', (req, res) => {
     return res.status(404).json({ error: 'Flag not found' });
   }
 
-  if (enabled && !prerequisitesMet(key)) {
-    return res.status(400).json({
-      error: 'Prerequisites not met',
-      unmet: flagMap[key].prerequisites.filter((p) => !flagState[p]),
+  if (ldLiveMode) {
+    const { ok, data } = await ldToggleFlag(key, enabled);
+    if (!ok) {
+      return res.status(502).json({ error: 'LD API error', detail: data });
+    }
+    // Give the SDK stream a moment to propagate
+    await new Promise((r) => setTimeout(r, 300));
+    return res.json({
+      key,
+      enabled: targetingState[key],
+      effective: await ldEvaluate(key),
+      cascadedOff: [],
     });
   }
 
-  flagState[key] = enabled;
+  // Simulation mode
+  if (enabled && !simPrereqsMet(key)) {
+    return res.status(400).json({
+      error: 'Prerequisites not met',
+      unmet: flagMap[key].prerequisites.filter((p) => !simState[p]),
+    });
+  }
 
+  simState[key] = enabled;
   let cascaded = [];
   if (!enabled) {
-    cascaded = cascadeOff(key);
+    cascaded = simCascadeOff(key);
   }
 
   res.json({
     key,
-    enabled: flagState[key],
-    effective: getEffectiveState(key),
+    enabled: simState[key],
+    effective: simEffective(key),
     cascadedOff: cascaded,
   });
 });
 
-app.post('/api/flags/reset', (_req, res) => {
-  FLAG_DEFINITIONS.forEach((f) => {
-    flagState[f.key] = false;
-  });
+app.post('/api/flags/reset', async (_req, res) => {
+  if (ldLiveMode) {
+    for (const f of FLAG_DEFINITIONS) {
+      await ldToggleFlag(f.key, false);
+      await new Promise((r) => setTimeout(r, 150));
+    }
+    await new Promise((r) => setTimeout(r, 500));
+    return res.json({ message: 'All flags turned off in LD' });
+  }
+
+  FLAG_DEFINITIONS.forEach((f) => { simState[f.key] = false; });
   res.json({ message: 'All flags reset' });
 });
 
-app.post('/api/flags/enable-all', (_req, res) => {
-  // Enable in topological order (respect prerequisites)
+app.post('/api/flags/enable-all', async (_req, res) => {
   const enabled = [];
   const visited = new Set();
 
-  function enableFlag(key) {
+  async function enableFlag(key) {
     if (visited.has(key)) return;
     visited.add(key);
     const flag = flagMap[key];
     if (!flag) return;
-    flag.prerequisites.forEach((p) => enableFlag(p));
-    flagState[key] = true;
+    for (const p of flag.prerequisites) {
+      await enableFlag(p);
+    }
+    if (ldLiveMode) {
+      await ldToggleFlag(key, true);
+      await new Promise((r) => setTimeout(r, 150));
+    } else {
+      simState[key] = true;
+    }
     enabled.push(key);
   }
 
-  FLAG_DEFINITIONS.forEach((f) => enableFlag(f.key));
+  for (const f of FLAG_DEFINITIONS) {
+    await enableFlag(f.key);
+  }
+
+  if (ldLiveMode) {
+    await new Promise((r) => setTimeout(r, 500));
+  }
+
   res.json({ enabled });
 });
 
-// Scripted rollout scenario that demonstrates prerequisite gating behavior.
-// Teams work independently and at different paces — flags block until their
-// prerequisites are satisfied, then cascade-unlock in bursts.
 app.get('/api/flags/scenario', (_req, res) => {
   function flagInfo(key) {
     const f = flagMap[key];
@@ -331,7 +457,6 @@ app.get('/api/flags/scenario', (_req, res) => {
   }
 
   const scenario = [
-    // ── Act 1: Downstream teams try to ship — but they're gated ──────
     {
       type: 'narration',
       title: 'Teams begin independent work',
@@ -357,8 +482,6 @@ app.get('/api/flags/scenario', (_req, res) => {
       ...flagInfo('api-payment-service-v2'),
       message: 'Core API team tries to launch Payment Service v2. Blocked — infrastructure has not provisioned the payment gateway or run DB migrations yet.',
     },
-
-    // ── Act 2: Infrastructure completes foundational work ────────────
     {
       type: 'narration',
       title: 'Infrastructure team delivers',
@@ -379,8 +502,6 @@ app.get('/api/flags/scenario', (_req, res) => {
       ...flagInfo('infra-cdn-optimization'),
       message: 'CDN edge caching rules deployed. No downstream dependencies were gated on this alone.',
     },
-
-    // ── Act 3: API gates open — enable API flags ─────────────────────
     {
       type: 'narration',
       title: 'API layer prerequisites satisfied',
@@ -401,8 +522,6 @@ app.get('/api/flags/scenario', (_req, res) => {
       ...flagInfo('api-inventory-realtime'),
       message: 'DB Migration prerequisite was already met. Real-time Inventory API goes live.',
     },
-
-    // ── Act 4: Gate opens — cascade unlock for Web, Mobile, Data ─────
     {
       type: 'narration',
       title: 'Gate opens — three teams unblock at once',
@@ -417,8 +536,6 @@ app.get('/api/flags/scenario', (_req, res) => {
       ],
       message: 'Three flags from three different teams enable at once — their shared API prerequisites are now all satisfied.',
     },
-
-    // ── Act 5: Second-order features unlock ──────────────────────────
     {
       type: 'narration',
       title: 'Second-order features unlock',
@@ -433,8 +550,6 @@ app.get('/api/flags/scenario', (_req, res) => {
       ],
       message: 'All second-tier flags now have their prerequisites met. One-Click Purchase, Apple Pay v2, and the Real-time Dashboard all go live.',
     },
-
-    // ── Act 6: Master release gate ───────────────────────────────────
     {
       type: 'narration',
       title: 'All teams green — master gate opens',
@@ -450,34 +565,33 @@ app.get('/api/flags/scenario', (_req, res) => {
   res.json(scenario);
 });
 
-app.get('/api/graph', (_req, res) => {
-  const nodes = FLAG_DEFINITIONS.map((f) => {
-    const unmetPrereqs = f.prerequisites
-      .filter((p) => !flagState[p])
-      .map((p) => flagMap[p]?.name || p);
-    return {
-      id: f.key,
-      name: f.name,
-      team: f.team,
-      description: f.description,
-      enabled: flagState[f.key],
-      effective: getEffectiveState(f.key),
-      prerequisitesMet: prerequisitesMet(f.key),
-      unmetPrereqs,
-      teamColor: f.team === 'all' ? '#f472b6' : TEAMS[f.team]?.color || '#94a3b8',
-    };
-  });
+app.get('/api/graph', async (_req, res) => {
+  const nodes = await Promise.all(
+    FLAG_DEFINITIONS.map(async (f) => {
+      const unmetPrereqs = await getUnmetPrereqs(f.key);
+      return {
+        id: f.key,
+        name: f.name,
+        team: f.team,
+        description: f.description,
+        enabled: await isEnabled(f.key),
+        effective: await isEffective(f.key),
+        prerequisitesMet: await arePrereqsMet(f.key),
+        unmetPrereqs,
+        teamColor: f.team === 'all' ? '#f472b6' : TEAMS[f.team]?.color || '#94a3b8',
+      };
+    })
+  );
 
-  const links = [];
-  FLAG_DEFINITIONS.forEach((f) => {
-    f.prerequisites.forEach((prereq) => {
-      links.push({
+  const links = await Promise.all(
+    FLAG_DEFINITIONS.flatMap((f) =>
+      f.prerequisites.map(async (prereq) => ({
         source: prereq,
         target: f.key,
-        met: flagState[prereq],
-      });
-    });
-  });
+        met: ldLiveMode ? await ldEvaluate(prereq) : simState[prereq],
+      }))
+    )
+  );
 
   res.json({ nodes, links, teams: TEAMS });
 });
@@ -489,7 +603,10 @@ app.get('/api/graph', (_req, res) => {
 await initLaunchDarkly();
 
 app.listen(PORT, () => {
+  const mode = ldLiveMode ? 'LIVE (synced with LaunchDarkly)' : 'SIMULATION (in-memory)';
   console.log(`\nOrchestration Demo running at http://localhost:${PORT}`);
+  console.log(`  Mode:          ${mode}`);
   console.log(`  Dashboard:     http://localhost:${PORT}/`);
-  console.log(`  Visualization: http://localhost:${PORT}/viz.html\n`);
+  console.log(`  Visualization: http://localhost:${PORT}/viz.html`);
+  console.log(`  Demo App:      http://localhost:${PORT}/demo.html\n`);
 });

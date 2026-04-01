@@ -196,7 +196,7 @@
              prereqNames, prereqKeys, dependents };
   }
 
-  window.AppStore = {
+  window._AppStore = {
     getTeams() {
       return TEAMS;
     },
@@ -383,5 +383,87 @@
         },
       ];
     },
+  };
+  // Keep a public alias so pages can still reference AppStore for direct access
+  window.AppStore = window._AppStore;
+
+  // -------------------------------------------------------------------------
+  //  DataLayer — auto-detects server (LD live mode) vs static (client-side)
+  //
+  //  Call DataLayer.init() on page load. All methods return Promises so the
+  //  calling code doesn't need to care which backend is active.
+  // -------------------------------------------------------------------------
+
+  let _useServer = false;
+  let _serverMode = 'simulation';
+
+  const ServerAPI = {
+    async getTeams() {
+      return fetch('/api/teams').then(r => r.json());
+    },
+    async getFlags() {
+      return fetch('/api/flags').then(r => r.json());
+    },
+    async toggle(key, enabled) {
+      const res = await fetch(`/api/flags/${key}/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      });
+      const data = await res.json();
+      data.ok = res.ok;
+      return data;
+    },
+    async reset() {
+      await fetch('/api/flags/reset', { method: 'POST' });
+    },
+    async enableAll() {
+      const res = await fetch('/api/flags/enable-all', { method: 'POST' });
+      return res.json();
+    },
+    async getGraph() {
+      return fetch('/api/graph').then(r => r.json());
+    },
+    async getScenario() {
+      return fetch('/api/flags/scenario').then(r => r.json());
+    },
+  };
+
+  const ClientAPI = {
+    async getTeams()    { return window._AppStore.getTeams(); },
+    async getFlags()    { return window._AppStore.getFlags(); },
+    async toggle(k, e)  { return window._AppStore.toggle(k, e); },
+    async reset()       { return window._AppStore.reset(); },
+    async enableAll()   { return window._AppStore.enableAll(); },
+    async getGraph()    { return window._AppStore.getGraph(); },
+    async getScenario() { return window._AppStore.getScenario(); },
+  };
+
+  window.DataLayer = {
+    get useServer() { return _useServer; },
+    get mode() { return _useServer ? _serverMode : 'client'; },
+
+    async init() {
+      try {
+        const res = await fetch('/api/health', { signal: AbortSignal.timeout(1500) });
+        if (res.ok) {
+          const info = await res.json();
+          _useServer = true;
+          _serverMode = info.mode || 'simulation';
+          console.log(`[DataLayer] Server detected — mode: ${_serverMode}`);
+          return;
+        }
+      } catch { /* server not reachable */ }
+      _useServer = false;
+      console.log('[DataLayer] No server — using client-side AppStore');
+    },
+
+    async getTeams()       { return (_useServer ? ServerAPI : ClientAPI).getTeams(); },
+    async getFlags()       { return (_useServer ? ServerAPI : ClientAPI).getFlags(); },
+    async toggle(key, en)  { return (_useServer ? ServerAPI : ClientAPI).toggle(key, en); },
+    async reset()          { return (_useServer ? ServerAPI : ClientAPI).reset(); },
+    async enableAll()      { return (_useServer ? ServerAPI : ClientAPI).enableAll(); },
+    async getGraph()       { return (_useServer ? ServerAPI : ClientAPI).getGraph(); },
+    async getScenario()    { return (_useServer ? ServerAPI : ClientAPI).getScenario(); },
   };
 })();

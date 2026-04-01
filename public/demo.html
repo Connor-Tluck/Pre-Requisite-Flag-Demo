@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LaunchDarkly Orchestration — Demo App</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%236366f1'/><path d='M30 25h15l15 25-15 25H30l15-25L30 25z' fill='white'/><path d='M50 25h15l15 25-15 25H50l15-25L50 25z' fill='white' opacity='.5'/></svg>">
+  <script src="/data.js"></script>
+  <style>
+    body { overflow-x: hidden; }
+
+    .demo-layout {
+      display: flex;
+      height: calc(100vh - 57px);
+    }
+
+    .demo-main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 2rem;
+      transition: margin-right .3s ease;
+    }
+
+    .demo-main.sidebar-open {
+      margin-right: 360px;
+    }
+
+    /* ── Floating sidebar toggle ─────────────────────────────────────── */
+    .sidebar-toggle {
+      position: fixed;
+      right: 1.25rem;
+      top: 80px;
+      z-index: 200;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-dim);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow);
+      transition: all .2s;
+    }
+
+    .sidebar-toggle:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--bg-hover);
+    }
+
+    .sidebar-toggle.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────────────────── */
+    .flag-sidebar {
+      position: fixed;
+      right: 0;
+      top: 57px;
+      bottom: 0;
+      width: 360px;
+      background: var(--bg-card);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      z-index: 150;
+      transform: translateX(100%);
+      transition: transform .3s ease;
+    }
+
+    .flag-sidebar.open {
+      transform: translateX(0);
+    }
+
+    .flag-sidebar-header {
+      padding: 1.25rem;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .flag-sidebar-header h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: .25rem;
+    }
+
+    .flag-sidebar-header p {
+      font-size: .78rem;
+      color: var(--text-dim);
+    }
+
+    .flag-sidebar-header .mode-badge {
+      display: inline-block;
+      font-size: .65rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-left: .5rem;
+      vertical-align: middle;
+    }
+
+    .mode-badge.live {
+      background: rgba(16, 185, 129, .15);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, .3);
+    }
+
+    .mode-badge.sim {
+      background: rgba(99, 102, 241, .15);
+      color: var(--accent);
+      border: 1px solid rgba(99, 102, 241, .3);
+    }
+
+    .flag-sidebar-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .sb-team-section {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sb-team-header {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      padding: .65rem 1rem;
+      background: rgba(255,255,255,.02);
+    }
+
+    .sb-team-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .65rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+      flex-shrink: 0;
+    }
+
+    .sb-team-name {
+      font-size: .8rem;
+      font-weight: 600;
+    }
+
+    .sb-team-count {
+      margin-left: auto;
+      font-size: .72rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-dim);
+    }
+
+    .sb-flag-row {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      padding: .5rem 1rem .5rem 1.6rem;
+      border-top: 1px solid rgba(255,255,255,.04);
+      transition: background .15s;
+    }
+
+    .sb-flag-row:hover {
+      background: var(--bg-hover);
+    }
+
+    .sb-flag-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .sb-flag-name {
+      font-size: .78rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sb-flag-status {
+      font-size: .65rem;
+      font-family: 'JetBrains Mono', monospace;
+      margin-top: 1px;
+    }
+
+    .sb-flag-blockers {
+      font-size: .6rem;
+      color: var(--danger);
+      margin-top: 2px;
+    }
+
+    /* ── Mock App Container ──────────────────────────────────────────── */
+    .mock-app {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .mock-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .mock-header h1 {
+      font-size: 1.8rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), var(--pink));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .mock-header p {
+      color: var(--text-dim);
+      font-size: .95rem;
+      margin-top: .5rem;
+    }
+
+    /* ── Release banner ──────────────────────────────────────────────── */
+    .mock-release-banner {
+      padding: 1rem 1.5rem;
+      border-radius: var(--radius);
+      border: 2px solid var(--border);
+      background: var(--bg-card);
+      text-align: center;
+      margin-bottom: 2rem;
+      transition: all .5s;
+    }
+
+    .mock-release-banner.live {
+      border-color: var(--success);
+      background: rgba(16, 185, 129, .08);
+      box-shadow: 0 0 30px rgba(16, 185, 129, .12);
+    }
+
+    .mock-release-banner h2 {
+      font-size: 1.1rem;
+      margin-bottom: .3rem;
+    }
+
+    .mock-release-banner .release-sub {
+      font-size: .85rem;
+      color: var(--text-dim);
+    }
+
+    .mock-release-banner.live .release-sub {
+      color: var(--success);
+      font-weight: 600;
+    }
+
+    /* ── Section grid ────────────────────────────────────────────────── */
+    .app-sections {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .app-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: all .4s;
+      position: relative;
+    }
+
+    .app-section.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .app-section.disabled {
+      opacity: .4;
+      filter: grayscale(.6);
+      pointer-events: none;
+    }
+
+    .app-section.disabled::after {
+      content: 'WAITING FOR PREREQUISITES';
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      color: var(--text-dim);
+      background: rgba(15, 17, 23, .6);
+      border-radius: var(--radius);
+    }
+
+    .app-section.active {
+      border-color: var(--success);
+      box-shadow: 0 0 16px rgba(16, 185, 129, .08);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .8rem;
+      flex-shrink: 0;
+    }
+
+    .section-title {
+      flex: 1;
+    }
+
+    .section-title h3 {
+      font-size: .9rem;
+      font-weight: 700;
+    }
+
+    .section-title p {
+      font-size: .72rem;
+      color: var(--text-dim);
+      margin-top: 1px;
+    }
+
+    .section-badge {
+      font-size: .65rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      flex-shrink: 0;
+    }
+
+    .section-badge.on {
+      background: rgba(16, 185, 129, .15);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, .3);
+    }
+
+    .section-badge.off {
+      background: rgba(100, 116, 139, .15);
+      color: #64748b;
+      border: 1px solid rgba(100, 116, 139, .3);
+    }
+
+    .section-body {
+      padding: 1.25rem;
+    }
+
+    /* ── Infrastructure status row ───────────────────────────────────── */
+    .infra-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+
+    .infra-item {
+      background: var(--bg-hover);
+      border-radius: 8px;
+      padding: .85rem 1rem;
+      text-align: center;
+      transition: all .4s;
+      border: 1px solid transparent;
+    }
+
+    .infra-item.active {
+      border-color: rgba(16, 185, 129, .3);
+      background: rgba(16, 185, 129, .06);
+    }
+
+    .infra-label {
+      font-size: .72rem;
+      color: var(--text-dim);
+      margin-bottom: .4rem;
+    }
+
+    .infra-status {
+      font-size: .75rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .infra-status.up { color: var(--success); }
+    .infra-status.down { color: #475569; }
+
+    /* ── API service cards ────────────────────────────────────────────── */
+    .api-services {
+      display: flex;
+      gap: .75rem;
+    }
+
+    .api-svc {
+      flex: 1;
+      background: var(--bg-hover);
+      border-radius: 8px;
+      padding: .75rem;
+      transition: all .4s;
+      border: 1px solid transparent;
+    }
+
+    .api-svc.active {
+      border-color: rgba(245, 158, 11, .3);
+      background: rgba(245, 158, 11, .05);
+    }
+
+    .api-svc-name {
+      font-size: .75rem;
+      font-weight: 600;
+      margin-bottom: .3rem;
+    }
+
+    .api-svc-endpoint {
+      font-size: .65rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-dim);
+      margin-bottom: .3rem;
+    }
+
+    .api-svc-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: .3rem;
+      vertical-align: middle;
+    }
+
+    .api-svc-dot.up { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .api-svc-dot.down { background: #475569; }
+
+    /* ── Checkout mock ───────────────────────────────────────────────── */
+    .checkout-mock {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .checkout-step {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: .85rem 1rem;
+      background: var(--bg-hover);
+      border-radius: 8px;
+      border: 1px solid transparent;
+      transition: all .3s;
+    }
+
+    .checkout-step.active {
+      border-color: rgba(16, 185, 129, .3);
+    }
+
+    .step-number {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .75rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      transition: all .3s;
+    }
+
+    .checkout-step.active .step-number {
+      background: var(--success);
+      color: #fff;
+    }
+
+    .step-label {
+      font-size: .82rem;
+      font-weight: 500;
+    }
+
+    .step-placeholder {
+      flex: 1;
+      height: 8px;
+      background: var(--border);
+      border-radius: 4px;
+    }
+
+    .oneclick-btn {
+      padding: .7rem 1.25rem;
+      border-radius: 8px;
+      font-size: .82rem;
+      font-weight: 700;
+      border: none;
+      cursor: default;
+      transition: all .4s;
+      text-align: center;
+    }
+
+    .oneclick-btn.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 12px rgba(99, 102, 241, .3);
+    }
+
+    .oneclick-btn.inactive {
+      background: var(--bg-hover);
+      color: #475569;
+    }
+
+    /* ── Mobile mock ─────────────────────────────────────────────────── */
+    .mobile-frame {
+      width: 200px;
+      margin: 0 auto;
+      background: #000;
+      border-radius: 24px;
+      padding: 12px;
+      border: 2px solid #333;
+    }
+
+    .mobile-screen {
+      background: var(--bg);
+      border-radius: 16px;
+      overflow: hidden;
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .mobile-bar {
+      height: 24px;
+      background: var(--bg-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .55rem;
+      color: var(--text-dim);
+    }
+
+    .mobile-content {
+      flex: 1;
+      padding: .75rem;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+    }
+
+    .mobile-row {
+      height: 10px;
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    .mobile-row.short { width: 60%; }
+
+    .apple-pay-btn {
+      padding: .5rem;
+      border-radius: 6px;
+      font-size: .7rem;
+      font-weight: 700;
+      text-align: center;
+      margin-top: auto;
+      transition: all .4s;
+    }
+
+    .apple-pay-btn.active {
+      background: #fff;
+      color: #000;
+    }
+
+    .apple-pay-btn.inactive {
+      background: var(--border);
+      color: #475569;
+    }
+
+    /* ── Analytics mock ──────────────────────────────────────────────── */
+    .analytics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .75rem;
+    }
+
+    .analytics-stat {
+      background: var(--bg-hover);
+      border-radius: 8px;
+      padding: .75rem;
+      text-align: center;
+      transition: all .4s;
+      border: 1px solid transparent;
+    }
+
+    .analytics-stat.active {
+      border-color: rgba(139, 92, 246, .3);
+    }
+
+    .analytics-stat-value {
+      font-size: 1.2rem;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+      transition: color .4s;
+    }
+
+    .analytics-stat-value.live { color: var(--success); }
+    .analytics-stat-value.dead { color: #475569; }
+
+    .analytics-stat-label {
+      font-size: .65rem;
+      color: var(--text-dim);
+      margin-top: .2rem;
+    }
+
+    .mini-chart {
+      margin-top: .75rem;
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 40px;
+    }
+
+    .mini-bar {
+      flex: 1;
+      background: var(--border);
+      border-radius: 2px;
+      transition: all .6s;
+    }
+
+    .mini-bar.active {
+      background: var(--accent);
+    }
+
+    /* ── Responsive ──────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .app-sections { grid-template-columns: 1fr; }
+      .infra-grid { grid-template-columns: 1fr; }
+      .api-services { flex-direction: column; }
+      .analytics-grid { grid-template-columns: 1fr; }
+      .flag-sidebar { width: 100%; }
+      .demo-main.sidebar-open { margin-right: 0; }
+    }
+
+    /* ── Toast ───────────────────────────────────────────────────────── */
+    .toast-container {
+      right: 1.5rem;
+    }
+
+    .demo-main.sidebar-open ~ .toast-container {
+      right: 380px;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <rect width="28" height="28" rx="6" fill="#6366f1"/>
+      <path d="M8 8h4l4 6-4 6H8l4-6-4-6z" fill="#fff"/>
+      <path d="M14 8h4l4 6-4 6h-4l4-6-4-6z" fill="#fff" opacity=".5"/>
+    </svg>
+    <span>LD Orchestration</span>
+  </div>
+  <div class="nav-links">
+    <a href="/">Dashboard</a>
+    <a href="/viz.html">Dependency Graph</a>
+    <a href="/demo.html" class="active">Demo App</a>
+  </div>
+</nav>
+
+<button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="Flag Status Panel">
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+    <rect x="2" y="3" width="7" height="2" rx="1" fill="currentColor"/>
+    <rect x="2" y="9" width="12" height="2" rx="1" fill="currentColor"/>
+    <rect x="2" y="15" width="9" height="2" rx="1" fill="currentColor"/>
+    <circle cx="15" cy="4" r="2.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
+    <circle cx="15" cy="16" r="2.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
+  </svg>
+</button>
+
+<div class="demo-layout">
+  <div class="demo-main" id="demoMain">
+    <div class="mock-app">
+
+      <div class="mock-header">
+        <h1>Unified Checkout 2.0</h1>
+        <p>Feature-flagged rollout — each section activates when its flag and all prerequisites are met</p>
+      </div>
+
+      <!-- Release Banner -->
+      <div class="mock-release-banner" id="releaseBanner">
+        <h2 id="releaseTitle">Checkout v2 — Awaiting Dependencies</h2>
+        <div class="release-sub" id="releaseSub">Enable all prerequisite flags across teams to unlock the full release</div>
+      </div>
+
+      <!-- Infrastructure -->
+      <div class="app-section full-width" id="section-infra">
+        <div class="section-header">
+          <div class="section-icon" style="background: #6366f122; color: #6366f1">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm14 1a1 1 0 11-2 0 1 1 0 012 0zM2 13a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2zm14 1a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
+          </div>
+          <div class="section-title">
+            <h3>Platform Infrastructure</h3>
+            <p>Foundational services — no prerequisites</p>
+          </div>
+          <span class="section-badge off" id="badge-infra">0 / 3</span>
+        </div>
+        <div class="section-body">
+          <div class="infra-grid">
+            <div class="infra-item" id="ui-infra-payment-gateway">
+              <div class="infra-label">Payment Gateway</div>
+              <div class="infra-status down">OFFLINE</div>
+            </div>
+            <div class="infra-item" id="ui-infra-database-migration">
+              <div class="infra-label">Database v2</div>
+              <div class="infra-status down">OFFLINE</div>
+            </div>
+            <div class="infra-item" id="ui-infra-cdn-optimization">
+              <div class="infra-label">CDN Edge Cache</div>
+              <div class="infra-status down">OFFLINE</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="app-sections">
+
+        <!-- Core API -->
+        <div class="app-section" id="section-api">
+          <div class="section-header">
+            <div class="section-icon" style="background: #f59e0b22; color: #f59e0b">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+            </div>
+            <div class="section-title">
+              <h3>Core API Services</h3>
+              <p>Requires infrastructure</p>
+            </div>
+            <span class="section-badge off" id="badge-api">0 / 3</span>
+          </div>
+          <div class="section-body">
+            <div class="api-services" style="flex-direction: column">
+              <div class="api-svc" id="ui-api-payment-service-v2">
+                <div class="api-svc-name"><span class="api-svc-dot down"></span>Payment Service v2</div>
+                <div class="api-svc-endpoint">POST /api/v2/payments</div>
+              </div>
+              <div class="api-svc" id="ui-api-order-management-v2">
+                <div class="api-svc-name"><span class="api-svc-dot down"></span>Order Management v2</div>
+                <div class="api-svc-endpoint">GET /api/v2/orders</div>
+              </div>
+              <div class="api-svc" id="ui-api-inventory-realtime">
+                <div class="api-svc-name"><span class="api-svc-dot down"></span>Real-time Inventory</div>
+                <div class="api-svc-endpoint">WSS /api/v2/inventory</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Web Checkout -->
+        <div class="app-section" id="section-web">
+          <div class="section-header">
+            <div class="section-icon" style="background: #10b98122; color: #10b981">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2h-2.22l.123.489.804.804A1 1 0 0113 18H7a1 1 0 01-.707-1.707l.804-.804L7.22 15H5a2 2 0 01-2-2V5zm5.771 7H5V5h10v7H8.771z" clip-rule="evenodd"/></svg>
+            </div>
+            <div class="section-title">
+              <h3>Web Checkout</h3>
+              <p>Requires API services</p>
+            </div>
+            <span class="section-badge off" id="badge-web">0 / 2</span>
+          </div>
+          <div class="section-body">
+            <div class="checkout-mock">
+              <div class="checkout-step" id="ui-step-1">
+                <div class="step-number">1</div>
+                <div class="step-label">Shipping</div>
+                <div class="step-placeholder"></div>
+              </div>
+              <div class="checkout-step" id="ui-step-2">
+                <div class="step-number">2</div>
+                <div class="step-label">Payment</div>
+                <div class="step-placeholder"></div>
+              </div>
+              <div class="checkout-step" id="ui-step-3">
+                <div class="step-number">3</div>
+                <div class="step-label">Confirm</div>
+                <div class="step-placeholder"></div>
+              </div>
+              <div class="oneclick-btn inactive" id="ui-oneclick">One-Click Purchase — Unavailable</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile -->
+        <div class="app-section" id="section-mobile">
+          <div class="section-header">
+            <div class="section-icon" style="background: #ef444422; color: #ef4444">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7 2a2 2 0 00-2 2v12a2 2 0 002 2h6a2 2 0 002-2V4a2 2 0 00-2-2H7zm3 14a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
+            </div>
+            <div class="section-title">
+              <h3>Mobile Checkout</h3>
+              <p>Requires API services</p>
+            </div>
+            <span class="section-badge off" id="badge-mobile">0 / 2</span>
+          </div>
+          <div class="section-body" style="display:flex; justify-content:center">
+            <div class="mobile-frame">
+              <div class="mobile-screen">
+                <div class="mobile-bar">ShopApp</div>
+                <div class="mobile-content" id="mobileContent">
+                  <div class="mobile-row"></div>
+                  <div class="mobile-row short"></div>
+                  <div class="mobile-row"></div>
+                  <div class="mobile-row short"></div>
+                  <div class="apple-pay-btn inactive" id="ui-applepay">Pay</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Analytics -->
+        <div class="app-section" id="section-data">
+          <div class="section-header">
+            <div class="section-icon" style="background: #8b5cf622; color: #8b5cf6">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zm6-4a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zm6-3a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>
+            </div>
+            <div class="section-title">
+              <h3>Data & Analytics</h3>
+              <p>Requires API services</p>
+            </div>
+            <span class="section-badge off" id="badge-data">0 / 2</span>
+          </div>
+          <div class="section-body">
+            <div class="analytics-grid">
+              <div class="analytics-stat" id="ui-stat-conv">
+                <div class="analytics-stat-value dead" id="stat-conv-val">—</div>
+                <div class="analytics-stat-label">Conversion</div>
+              </div>
+              <div class="analytics-stat" id="ui-stat-rev">
+                <div class="analytics-stat-value dead" id="stat-rev-val">—</div>
+                <div class="analytics-stat-label">Revenue</div>
+              </div>
+              <div class="analytics-stat" id="ui-stat-inv">
+                <div class="analytics-stat-value dead" id="stat-inv-val">—</div>
+                <div class="analytics-stat-label">Inventory</div>
+              </div>
+            </div>
+            <div class="mini-chart" id="miniChart"></div>
+          </div>
+        </div>
+
+      </div><!-- /app-sections -->
+    </div><!-- /mock-app -->
+  </div><!-- /demo-main -->
+
+  <!-- ── Flag Status Sidebar ─────────────────────────────────────────── -->
+  <div class="flag-sidebar" id="flagSidebar">
+    <div class="flag-sidebar-header">
+      <h2>Flag Status <span class="mode-badge sim" id="modeBadge">SIMULATION</span></h2>
+      <p>Toggle flags here or in the LaunchDarkly dashboard</p>
+    </div>
+    <div class="flag-sidebar-list" id="flagSidebarList"></div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+const TEAMS = {
+  infrastructure: { name: 'Platform Infrastructure', color: '#6366f1', abbr: 'INF' },
+  api:            { name: 'Core API',                color: '#f59e0b', abbr: 'API' },
+  web:            { name: 'Web Experience',          color: '#10b981', abbr: 'WEB' },
+  mobile:         { name: 'Mobile Engineering',      color: '#ef4444', abbr: 'MOB' },
+  data:           { name: 'Data & Analytics',        color: '#8b5cf6', abbr: 'DAT' },
+};
+
+const FLAG_TO_TEAM = {
+  'infra-payment-gateway': 'infrastructure',
+  'infra-database-migration': 'infrastructure',
+  'infra-cdn-optimization': 'infrastructure',
+  'api-payment-service-v2': 'api',
+  'api-order-management-v2': 'api',
+  'api-inventory-realtime': 'api',
+  'web-checkout-redesign': 'web',
+  'web-one-click-purchase': 'web',
+  'mobile-checkout-flow': 'mobile',
+  'mobile-apple-pay-v2': 'mobile',
+  'data-event-tracking-v2': 'data',
+  'data-realtime-dashboard': 'data',
+  'release-checkout-v2': 'all',
+};
+
+let flags = [];
+let sidebarOpen = false;
+
+function toggleSidebar() {
+  sidebarOpen = !sidebarOpen;
+  document.getElementById('flagSidebar').classList.toggle('open', sidebarOpen);
+  document.getElementById('demoMain').classList.toggle('sidebar-open', sidebarOpen);
+  document.getElementById('sidebarToggle').classList.toggle('active', sidebarOpen);
+}
+
+async function fetchFlags() {
+  flags = await DataLayer.getFlags();
+  updateMockUI();
+  updateSidebar();
+}
+
+function flagByKey(key) {
+  return flags.find(f => f.key === key);
+}
+
+function isOn(key) {
+  const f = flagByKey(key);
+  return f && f.effective;
+}
+
+// ── Update mock UI based on flag state ────────────────────────────────
+
+function updateMockUI() {
+  // Infrastructure items
+  ['infra-payment-gateway', 'infra-database-migration', 'infra-cdn-optimization'].forEach(key => {
+    const el = document.getElementById('ui-' + key);
+    if (!el) return;
+    const on = isOn(key);
+    el.classList.toggle('active', on);
+    el.querySelector('.infra-status').textContent = on ? 'ONLINE' : 'OFFLINE';
+    el.querySelector('.infra-status').className = 'infra-status ' + (on ? 'up' : 'down');
+  });
+
+  const infraCount = ['infra-payment-gateway', 'infra-database-migration', 'infra-cdn-optimization'].filter(isOn).length;
+  updateBadge('badge-infra', infraCount, 3);
+
+  // API services
+  ['api-payment-service-v2', 'api-order-management-v2', 'api-inventory-realtime'].forEach(key => {
+    const el = document.getElementById('ui-' + key);
+    if (!el) return;
+    const on = isOn(key);
+    el.classList.toggle('active', on);
+    el.querySelector('.api-svc-dot').className = 'api-svc-dot ' + (on ? 'up' : 'down');
+  });
+
+  const apiCount = ['api-payment-service-v2', 'api-order-management-v2', 'api-inventory-realtime'].filter(isOn).length;
+  updateBadge('badge-api', apiCount, 3);
+
+  const apiReady = isOn('api-payment-service-v2') && isOn('api-order-management-v2');
+  document.getElementById('section-api').classList.toggle('disabled', infraCount === 0);
+  document.getElementById('section-api').classList.toggle('active', apiCount === 3);
+
+  // Web checkout
+  const checkoutOn = isOn('web-checkout-redesign');
+  const oneclickOn = isOn('web-one-click-purchase');
+  document.getElementById('section-web').classList.toggle('disabled', !apiReady);
+  document.getElementById('section-web').classList.toggle('active', checkoutOn);
+
+  ['ui-step-1', 'ui-step-2', 'ui-step-3'].forEach(id => {
+    document.getElementById(id).classList.toggle('active', checkoutOn);
+  });
+
+  const oc = document.getElementById('ui-oneclick');
+  oc.className = 'oneclick-btn ' + (oneclickOn ? 'active' : 'inactive');
+  oc.textContent = oneclickOn ? 'Buy Now — One Click' : 'One-Click Purchase — Unavailable';
+
+  const webCount = [checkoutOn, oneclickOn].filter(Boolean).length;
+  updateBadge('badge-web', webCount, 2);
+
+  // Mobile
+  const mobileOn = isOn('mobile-checkout-flow');
+  const applePayOn = isOn('mobile-apple-pay-v2');
+  document.getElementById('section-mobile').classList.toggle('disabled', !apiReady);
+  document.getElementById('section-mobile').classList.toggle('active', mobileOn);
+
+  const ap = document.getElementById('ui-applepay');
+  ap.className = 'apple-pay-btn ' + (applePayOn ? 'active' : 'inactive');
+  ap.textContent = applePayOn ? ' Pay' : 'Pay';
+
+  const mobileCount = [mobileOn, applePayOn].filter(Boolean).length;
+  updateBadge('badge-mobile', mobileCount, 2);
+
+  // Data & Analytics
+  const trackingOn = isOn('data-event-tracking-v2');
+  const dashboardOn = isOn('data-realtime-dashboard');
+  document.getElementById('section-data').classList.toggle('disabled', !apiReady);
+  document.getElementById('section-data').classList.toggle('active', trackingOn);
+
+  const convEl = document.getElementById('stat-conv-val');
+  const revEl = document.getElementById('stat-rev-val');
+  const invEl = document.getElementById('stat-inv-val');
+
+  if (dashboardOn) {
+    convEl.textContent = '4.2%';
+    convEl.className = 'analytics-stat-value live';
+    revEl.textContent = '$12.4k';
+    revEl.className = 'analytics-stat-value live';
+    invEl.textContent = '2,847';
+    invEl.className = 'analytics-stat-value live';
+    document.getElementById('ui-stat-conv').classList.add('active');
+    document.getElementById('ui-stat-rev').classList.add('active');
+    document.getElementById('ui-stat-inv').classList.add('active');
+  } else if (trackingOn) {
+    convEl.textContent = '—';
+    convEl.className = 'analytics-stat-value dead';
+    revEl.textContent = '—';
+    revEl.className = 'analytics-stat-value dead';
+    invEl.textContent = '—';
+    invEl.className = 'analytics-stat-value dead';
+    document.getElementById('ui-stat-conv').classList.remove('active');
+    document.getElementById('ui-stat-rev').classList.remove('active');
+    document.getElementById('ui-stat-inv').classList.remove('active');
+  } else {
+    convEl.textContent = '—';
+    convEl.className = 'analytics-stat-value dead';
+    revEl.textContent = '—';
+    revEl.className = 'analytics-stat-value dead';
+    invEl.textContent = '—';
+    invEl.className = 'analytics-stat-value dead';
+    ['ui-stat-conv', 'ui-stat-rev', 'ui-stat-inv'].forEach(id =>
+      document.getElementById(id).classList.remove('active'));
+  }
+
+  const dataCount = [trackingOn, dashboardOn].filter(Boolean).length;
+  updateBadge('badge-data', dataCount, 2);
+
+  // Mini chart bars
+  const chart = document.getElementById('miniChart');
+  if (!chart.children.length) {
+    for (let i = 0; i < 12; i++) {
+      const bar = document.createElement('div');
+      bar.className = 'mini-bar';
+      chart.appendChild(bar);
+    }
+  }
+  const bars = chart.children;
+  const heights = [30, 50, 40, 70, 55, 80, 60, 90, 45, 75, 65, 85];
+  for (let i = 0; i < bars.length; i++) {
+    bars[i].style.height = dashboardOn ? heights[i] + '%' : '8%';
+    bars[i].classList.toggle('active', dashboardOn);
+  }
+
+  // Release banner
+  const releaseOn = isOn('release-checkout-v2');
+  const banner = document.getElementById('releaseBanner');
+  const title = document.getElementById('releaseTitle');
+  const sub = document.getElementById('releaseSub');
+
+  banner.classList.toggle('live', releaseOn);
+  if (releaseOn) {
+    title.textContent = 'Checkout v2 — LIVE';
+    sub.textContent = 'All dependencies met. Unified Checkout 2.0 is fully enabled for all customers.';
+  } else {
+    const master = flagByKey('release-checkout-v2');
+    if (master && master.enabled) {
+      title.textContent = 'Checkout v2 — Enabled but Blocked';
+      sub.textContent = 'Master flag is ON but some prerequisites are not yet met.';
+    } else {
+      title.textContent = 'Checkout v2 — Awaiting Dependencies';
+      sub.textContent = 'Enable all prerequisite flags across teams to unlock the full release';
+    }
+  }
+}
+
+function updateBadge(id, count, total) {
+  const el = document.getElementById(id);
+  el.textContent = `${count} / ${total}`;
+  el.className = 'section-badge ' + (count === total ? 'on' : 'off');
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────
+
+function updateSidebar() {
+  const badge = document.getElementById('modeBadge');
+  if (DataLayer.mode === 'live') {
+    badge.textContent = 'LIVE';
+    badge.className = 'mode-badge live';
+  } else if (DataLayer.mode === 'simulation') {
+    badge.textContent = 'SERVER';
+    badge.className = 'mode-badge sim';
+  } else {
+    badge.textContent = 'CLIENT';
+    badge.className = 'mode-badge sim';
+  }
+
+  const container = document.getElementById('flagSidebarList');
+  container.innerHTML = '';
+
+  const teamOrder = ['infrastructure', 'api', 'web', 'mobile', 'data'];
+
+  for (const teamKey of teamOrder) {
+    const team = TEAMS[teamKey];
+    const teamFlags = flags.filter(f => f.team === teamKey);
+    if (!teamFlags.length) continue;
+
+    const enabledCount = teamFlags.filter(f => f.effective).length;
+
+    let html = `<div class="sb-team-section">
+      <div class="sb-team-header">
+        <div class="sb-team-icon" style="background:${team.color}22;color:${team.color}">${team.abbr}</div>
+        <div class="sb-team-name">${team.name}</div>
+        <div class="sb-team-count" style="color:${enabledCount === teamFlags.length ? 'var(--success)' : 'var(--text-dim)'}">${enabledCount}/${teamFlags.length}</div>
+      </div>`;
+
+    for (const f of teamFlags) {
+      let statusText, statusColor;
+      if (f.effective) {
+        statusText = 'ACTIVE';
+        statusColor = 'var(--success)';
+      } else if (f.enabled && !f.effective) {
+        statusText = 'BLOCKED';
+        statusColor = 'var(--warning)';
+      } else if (f.prerequisitesMet) {
+        statusText = 'READY';
+        statusColor = '#38bdf8';
+      } else {
+        statusText = 'OFF';
+        statusColor = '#475569';
+      }
+
+      const canEnable = f.prerequisites.every(p => {
+        const pf = flags.find(ff => ff.key === p);
+        return pf && pf.enabled;
+      });
+
+      const blockers = f.prerequisites.filter(p => {
+        const pf = flags.find(ff => ff.key === p);
+        return !pf || !pf.effective;
+      });
+
+      html += `<div class="sb-flag-row">
+        <div class="status-dot ${f.effective ? 'on' : f.enabled ? 'blocked' : 'off'}"></div>
+        <div class="sb-flag-info">
+          <div class="sb-flag-name">${f.name}</div>
+          <div class="sb-flag-status" style="color:${statusColor}">${statusText}</div>
+          ${blockers.length && !f.effective ? `<div class="sb-flag-blockers">Blocked by: ${blockers.join(', ')}</div>` : ''}
+        </div>
+        <label class="toggle" style="transform:scale(.85)">
+          <input type="checkbox" ${f.enabled ? 'checked' : ''} ${!canEnable && !f.enabled ? 'disabled' : ''}
+                 onchange="sidebarToggle('${f.key}', this.checked)">
+          <span class="slider"></span>
+        </label>
+      </div>`;
+    }
+
+    html += '</div>';
+    container.insertAdjacentHTML('beforeend', html);
+  }
+
+  // Master gate
+  const master = flags.find(f => f.team === 'all');
+  if (master) {
+    const canEnable = master.prerequisites.every(p => {
+      const pf = flags.find(ff => ff.key === p);
+      return pf && pf.enabled;
+    });
+    const blockers = master.prerequisites.filter(p => {
+      const pf = flags.find(ff => ff.key === p);
+      return !pf || !pf.effective;
+    });
+
+    let statusText, statusColor;
+    if (master.effective) {
+      statusText = 'ACTIVE';
+      statusColor = 'var(--success)';
+    } else if (master.enabled) {
+      statusText = 'BLOCKED';
+      statusColor = 'var(--warning)';
+    } else {
+      statusText = 'OFF';
+      statusColor = '#475569';
+    }
+
+    container.insertAdjacentHTML('beforeend', `<div class="sb-team-section">
+      <div class="sb-team-header">
+        <div class="sb-team-icon" style="background:rgba(244,114,182,.15);color:var(--pink);font-size:.6rem;font-weight:800">GATE</div>
+        <div class="sb-team-name">Release Gate</div>
+      </div>
+      <div class="sb-flag-row">
+        <div class="status-dot ${master.effective ? 'on' : master.enabled ? 'blocked' : 'off'}"></div>
+        <div class="sb-flag-info">
+          <div class="sb-flag-name">${master.name}</div>
+          <div class="sb-flag-status" style="color:${statusColor}">${statusText}</div>
+          ${blockers.length && !master.effective ? `<div class="sb-flag-blockers">Blocked by: ${blockers.join(', ')}</div>` : ''}
+        </div>
+        <label class="toggle" style="transform:scale(.85)">
+          <input type="checkbox" ${master.enabled ? 'checked' : ''} ${!canEnable && !master.enabled ? 'disabled' : ''}
+                 onchange="sidebarToggle('${master.key}', this.checked)">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>`);
+  }
+}
+
+async function sidebarToggle(key, enabled) {
+  const result = await DataLayer.toggle(key, enabled);
+  if (!result.ok) {
+    showToast(`Cannot enable: prerequisites not met`, 'error');
+  } else if (enabled) {
+    showToast(`${flagByKey(key)?.name || key} enabled`, 'success');
+  } else {
+    showToast(`${flagByKey(key)?.name || key} disabled`, 'info');
+  }
+  await fetchFlags();
+}
+
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3500);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────
+
+(async () => {
+  await DataLayer.init();
+  await fetchFlags();
+  setInterval(fetchFlags, 3000);
+})();
+</script>
+</body>
+</html>

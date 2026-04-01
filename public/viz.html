@@ -737,6 +737,7 @@
   <div class="nav-links">
     <a href="/">Dashboard</a>
     <a href="/viz.html" class="active">Dependency Graph</a>
+    <a href="/demo.html">Demo App</a>
   </div>
 </nav>
 
@@ -863,6 +864,7 @@ const LAYERS = {
 };
 
 async function init() {
+  await DataLayer.init();
   await fetchGraph();
   buildLegend();
   buildGraph();
@@ -870,13 +872,13 @@ async function init() {
   setInterval(refreshStates, 3000);
 }
 
-function fetchGraph() {
-  graphData = AppStore.getGraph();
+async function fetchGraph() {
+  graphData = await DataLayer.getGraph();
 }
 
-function refreshStates() {
+async function refreshStates() {
   if (rolloutRunning) return;
-  const fresh = AppStore.getGraph();
+  const fresh = await DataLayer.getGraph();
   graphData.nodes.forEach((n, i) => {
     n.enabled = fresh.nodes[i].enabled;
     n.effective = fresh.nodes[i].effective;
@@ -993,13 +995,13 @@ function showToast(message, type = 'info') {
   setTimeout(() => el.remove(), 3500);
 }
 
-function ctrlToggleFlag(key, enabled) {
-  const result = AppStore.toggle(key, enabled);
+async function ctrlToggleFlag(key, enabled) {
+  const result = await DataLayer.toggle(key, enabled);
   if (!result.ok) {
     const node = graphData.nodes.find(n => n.id === key);
     showToast(`Cannot enable ${node?.name || key}: prerequisites not met`, 'error');
   }
-  refreshStates();
+  await refreshStates();
   buildFlagControls();
 }
 
@@ -1718,8 +1720,8 @@ function restoreOpacity() {
     .attr('stroke-width', 1.5);
 }
 
-function syncGraph() {
-  const snap = AppStore.getGraph();
+async function syncGraph() {
+  const snap = await DataLayer.getGraph();
   graphData.nodes.forEach((n, i) => {
     n.enabled = snap.nodes[i].enabled;
     n.effective = snap.nodes[i].effective;
@@ -1730,8 +1732,8 @@ function syncGraph() {
   updateVisuals();
 }
 
-function enableFlag(key) {
-  AppStore.toggle(key, true);
+async function enableFlag(key) {
+  await DataLayer.toggle(key, true);
 }
 
 // ── Rollout State Machine ────────────────────────────────────────────────
@@ -1828,18 +1830,16 @@ async function executeStep(idx, animate) {
 // Replay flag state from scratch up to (but not including) targetIdx,
 // then execute targetIdx with animations.
 async function jumpToStep(targetIdx) {
-  AppStore.reset();
+  await DataLayer.reset();
   rolloutLogEntries = [];
 
-  // Silently replay all flag-changing steps before targetIdx
   for (let i = 0; i < targetIdx; i++) {
     const ev = scenarioSteps[i];
     if (ev.type === 'enable') {
       await enableFlag(ev.key);
     } else if (ev.type === 'cascade') {
-      await Promise.all(ev.flags.map(f => enableFlag(f.key)));
+      for (const f of ev.flags) { await enableFlag(f.key); }
     }
-    // Rebuild log entries
     if (ev.type === 'narration') addLogEntry('narration', ev.title);
     else if (ev.type === 'blocked') addLogEntry('blocked', `${ev.name} -- gated`);
     else if (ev.type === 'enable') addLogEntry('enabled', ev.name);
@@ -1879,16 +1879,16 @@ function scheduleAutoAdvance() {
 
 // ── Transport Controls ──────────────────────────────────────────────────
 
-function vizReset() {
+async function vizReset() {
   rolloutStop();
-  AppStore.reset();
-  refreshStates();
+  await DataLayer.reset();
+  await refreshStates();
 }
 
-function vizEnableAll() {
+async function vizEnableAll() {
   rolloutStop();
-  AppStore.enableAll();
-  refreshStates();
+  await DataLayer.enableAll();
+  await refreshStates();
 }
 
 async function vizRollout() {
@@ -1897,9 +1897,9 @@ async function vizRollout() {
   rolloutLogEntries = [];
   scenarioIdx = -1;
 
-  scenarioSteps = AppStore.getScenario();
-  AppStore.reset();
-  syncGraph();
+  scenarioSteps = await DataLayer.getScenario();
+  await DataLayer.reset();
+  await syncGraph();
 
   showTransportControls();
   openRolloutPanel();

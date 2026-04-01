@@ -6,7 +6,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "setup-flags": "node setup-ld-flags.js"
   },
   "dependencies": {
     "@launchdarkly/node-server-sdk": "^9.7.0",

@@ -24,6 +24,7 @@
   <div class="nav-links">
     <a href="/" class="active">Dashboard</a>
     <a href="/viz.html">Dependency Graph</a>
+    <a href="/demo.html">Demo App</a>
   </div>
 </nav>
 
@@ -71,9 +72,9 @@
 let flags = [];
 let teams = {};
 
-function fetchData() {
-  flags = AppStore.getFlags();
-  teams = AppStore.getTeams();
+async function fetchData() {
+  flags = await DataLayer.getFlags();
+  teams = await DataLayer.getTeams();
   render();
 }
 
@@ -216,13 +217,13 @@ function shortKey(key) {
   return key.split('-').slice(0, 2).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
-function toggleFlag(key, enabled) {
-  const data = AppStore.toggle(key, enabled);
+async function toggleFlag(key, enabled) {
+  const data = await DataLayer.toggle(key, enabled);
 
   if (!data.ok) {
     showToast(`Cannot enable ${shortKey(key)}: prerequisites not met`, 'error');
     addLog(key, 'blocked', data.unmet);
-    fetchData();
+    await fetchData();
     return;
   }
 
@@ -239,28 +240,28 @@ function toggleFlag(key, enabled) {
     data.cascadedOff.forEach(k => addLog(k, 'cascade'));
   }
 
-  fetchData();
+  await fetchData();
 }
 
-function resetAll() {
-  AppStore.reset();
+async function resetAll() {
+  await DataLayer.reset();
   addLog('all', 'off', null, 'All flags reset');
   showToast('All flags reset', 'info');
-  fetchData();
+  await fetchData();
 }
 
-function enableAll() {
-  AppStore.enableAll();
+async function enableAll() {
+  await DataLayer.enableAll();
   addLog('all', 'on', null, 'All flags enabled in dependency order');
   showToast('All flags enabled', 'success');
-  fetchData();
+  await fetchData();
 }
 
 async function rolloutSequence() {
-  const scenario = AppStore.getScenario();
+  const scenario = await DataLayer.getScenario();
 
-  AppStore.reset();
-  fetchData();
+  await DataLayer.reset();
+  await fetchData();
   addLog('all', 'off', null, 'Scenario started — resetting all flags');
 
   for (const event of scenario) {
@@ -274,17 +275,17 @@ async function rolloutSequence() {
       await new Promise(r => setTimeout(r, 1200));
 
     } else if (event.type === 'enable') {
-      AppStore.toggle(event.key, true);
+      await DataLayer.toggle(event.key, true);
       addLog(event.key, 'on', null, `${event.team} enabled`);
-      fetchData();
+      await fetchData();
       await new Promise(r => setTimeout(r, 700));
 
     } else if (event.type === 'cascade') {
       const names = event.flags.map(f => f.name);
       showToast(`Gate opened — ${names.length} flags unlock at once`, 'success');
-      event.flags.forEach(f => AppStore.toggle(f.key, true));
+      for (const f of event.flags) { await DataLayer.toggle(f.key, true); }
       event.flags.forEach(f => addLog(f.key, 'on', null, 'Prerequisite gate satisfied — auto-enabled'));
-      fetchData();
+      await fetchData();
       await new Promise(r => setTimeout(r, 1000));
     }
   }
@@ -320,7 +321,13 @@ function showToast(message, type = 'info') {
   setTimeout(() => toast.remove(), 4000);
 }
 
-fetchData();
+(async () => {
+  await DataLayer.init();
+  await fetchData();
+  if (DataLayer.useServer) {
+    setInterval(fetchData, 3000);
+  }
+})();
 </script>
 </body>
 </html>

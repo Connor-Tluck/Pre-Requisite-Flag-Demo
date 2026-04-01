@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%236366f1'/><path d='M30 25h15l15 25-15 25H30l15-25L30 25z' fill='white'/><path d='M50 25h15l15 25-15 25H50l15-25L50 25z' fill='white' opacity='.5'/></svg>">
+  <script src="/data.js"></script>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
     body { overflow: hidden; }
@@ -313,77 +314,86 @@
       height: 100%;
     }
 
-    .node-group { cursor: pointer; }
-
-    .node-rect {
-      rx: 10;
-      ry: 10;
-      stroke-width: 2;
-      transition: stroke .3s, filter .3s;
-    }
-
     .node-group { cursor: grab; }
     .node-group.dragging { cursor: grabbing; }
 
-    .node-group:hover .node-rect {
-      filter: brightness(1.3) drop-shadow(0 0 12px rgba(255,255,255,.15));
+    .node-card-bg {
+      transition: stroke .3s, filter .3s, opacity .3s;
     }
 
-    .node-group.dragging .node-rect {
-      filter: brightness(1.4) drop-shadow(0 0 18px rgba(255,255,255,.25));
+    .node-group:hover .node-card-bg {
+      filter: brightness(1.12) drop-shadow(0 0 18px rgba(0,0,0,.5));
     }
 
-    .node-label {
-      fill: #fff;
+    .node-group.dragging .node-card-bg {
+      filter: brightness(1.18) drop-shadow(0 0 24px rgba(0,0,0,.6));
+    }
+
+    .node-card-accent { pointer-events: none; }
+
+    .node-card-name {
+      fill: #e2e8f0;
       font-family: 'Inter', sans-serif;
       font-weight: 600;
       font-size: 11px;
-      text-anchor: middle;
       pointer-events: none;
     }
 
-    .node-team-label {
-      fill: rgba(255,255,255,.5);
+    .node-card-desc {
+      fill: rgba(255,255,255,.38);
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      font-size: 8.5px;
+      pointer-events: none;
+    }
+
+    .node-card-team-name {
+      fill: rgba(255,255,255,.55);
       font-family: 'Inter', sans-serif;
       font-weight: 500;
       font-size: 9px;
-      text-anchor: middle;
       pointer-events: none;
     }
 
-    .node-status-label {
+    .node-card-sep {
+      stroke: rgba(255,255,255,.07);
+      stroke-width: 1;
+      pointer-events: none;
+    }
+
+    .node-card-metric-label {
+      fill: rgba(255,255,255,.38);
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      font-size: 9px;
+      pointer-events: none;
+    }
+
+    .node-card-metric-val {
       font-family: 'JetBrains Mono', monospace;
       font-weight: 600;
-      font-size: 8px;
-      text-anchor: middle;
+      font-size: 9px;
+      text-anchor: end;
       pointer-events: none;
-      letter-spacing: .06em;
     }
 
-    .node-blocker-label {
-      font-family: 'JetBrains Mono', monospace;
-      font-weight: 500;
-      font-size: 7px;
-      text-anchor: middle;
+    .node-card-status-dot {
       pointer-events: none;
-      letter-spacing: .03em;
-      opacity: .85;
+      transition: fill .3s;
     }
 
     .link {
       fill: none;
-      stroke-width: 2;
-      opacity: .5;
+      stroke-width: 1.5;
+      stroke-dasharray: 8 5;
     }
 
     .link.met {
-      stroke: var(--success);
-      opacity: .7;
+      stroke: rgba(16, 185, 129, .4);
     }
 
     .link.unmet {
-      stroke: #475569;
-      stroke-dasharray: 6 4;
+      stroke: rgba(71, 85, 105, .45);
     }
 
 
@@ -392,13 +402,13 @@
       opacity: 0;
     }
 
-    .particle.active { opacity: 1; }
+    .particle.active { opacity: .6; }
 
     .layer-label {
-      fill: rgba(255,255,255,.12);
+      fill: rgba(255,255,255,.06);
       font-family: 'Inter', sans-serif;
       font-weight: 800;
-      font-size: 13px;
+      font-size: 12px;
       text-anchor: start;
       letter-spacing: .1em;
       text-transform: uppercase;
@@ -406,7 +416,7 @@
     }
 
     .layer-divider {
-      stroke: rgba(255,255,255,.04);
+      stroke: rgba(255,255,255,.025);
       stroke-width: 1;
       stroke-dasharray: 8 6;
     }
@@ -836,13 +846,12 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
-const API = '';
 let graphData = null;
 let selectedNode = null;
 let rolloutRunning = false;
 let svg, g;
 let nodeElements, linkElements, particleElements;
-const NODE_W = 190, NODE_H = 72;
+const NODE_W = 200, NODE_H = 140;
 
 const LAYERS = {
   infrastructure: { y: 0 },
@@ -861,13 +870,13 @@ async function init() {
   setInterval(refreshStates, 3000);
 }
 
-async function fetchGraph() {
-  graphData = await fetch(`${API}/api/graph`).then(r => r.json());
+function fetchGraph() {
+  graphData = AppStore.getGraph();
 }
 
-async function refreshStates() {
+function refreshStates() {
   if (rolloutRunning) return;
-  const fresh = await fetch(`${API}/api/graph`).then(r => r.json());
+  const fresh = AppStore.getGraph();
   graphData.nodes.forEach((n, i) => {
     n.enabled = fresh.nodes[i].enabled;
     n.effective = fresh.nodes[i].effective;
@@ -984,23 +993,14 @@ function showToast(message, type = 'info') {
   setTimeout(() => el.remove(), 3500);
 }
 
-async function ctrlToggleFlag(key, enabled) {
-  try {
-    const res = await fetch(`${API}/api/flags/${key}/toggle`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled }),
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      const node = graphData.nodes.find(n => n.id === key);
-      showToast(`Cannot enable ${node?.name || key}: prerequisites not met`, 'error');
-    }
-    await refreshStates();
-    buildFlagControls();
-  } catch (err) {
-    showToast(`Error: ${err.message}`, 'error');
+function ctrlToggleFlag(key, enabled) {
+  const result = AppStore.toggle(key, enabled);
+  if (!result.ok) {
+    const node = graphData.nodes.find(n => n.id === key);
+    showToast(`Cannot enable ${node?.name || key}: prerequisites not met`, 'error');
   }
+  refreshStates();
+  buildFlagControls();
 }
 
 function buildGraph() {
@@ -1019,21 +1019,21 @@ function buildGraph() {
     .attr('id', 'arrow-met')
     .attr('viewBox', '0 0 10 10')
     .attr('refX', 10).attr('refY', 5)
-    .attr('markerWidth', 8).attr('markerHeight', 8)
+    .attr('markerWidth', 6).attr('markerHeight', 6)
     .attr('orient', 'auto')
     .append('path')
     .attr('d', 'M0,0 L10,5 L0,10 Z')
-    .attr('fill', '#10b981');
+    .attr('fill', 'rgba(16,185,129,.5)');
 
   defs.append('marker')
     .attr('id', 'arrow-unmet')
     .attr('viewBox', '0 0 10 10')
     .attr('refX', 10).attr('refY', 5)
-    .attr('markerWidth', 8).attr('markerHeight', 8)
+    .attr('markerWidth', 6).attr('markerHeight', 6)
     .attr('orient', 'auto')
     .append('path')
     .attr('d', 'M0,0 L10,5 L0,10 Z')
-    .attr('fill', '#475569');
+    .attr('fill', 'rgba(71,85,105,.5)');
 
   const glow = defs.append('filter').attr('id', 'glow');
   glow.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'blur');
@@ -1059,7 +1059,7 @@ function buildGraph() {
     { label: 'RELEASE GATE', y: 3 },
   ];
 
-  const yScale = d3.scaleLinear().domain([0, 3]).range([height * 0.12, height * 0.85]);
+  const yScale = d3.scaleLinear().domain([0, 3]).range([height * 0.10, height * 0.90]);
 
   const labelOffset = NODE_H / 2 + 18;
 
@@ -1129,46 +1129,90 @@ function buildGraph() {
     .call(dragBehavior);
 
   nodeElements.append('rect')
-    .attr('class', 'node-rect')
+    .attr('class', 'node-card-bg')
     .attr('width', NODE_W)
     .attr('height', NODE_H)
-    .attr('fill', d => d.enabled ? d.teamColor : shadeColor(d.teamColor, -50))
-    .attr('stroke', d => d.teamColor)
-    .attr('opacity', d => d.enabled ? 1 : .55);
+    .attr('rx', 12).attr('ry', 12)
+    .attr('fill', '#1a1d27')
+    .attr('stroke', d => d.teamColor + '44')
+    .attr('stroke-width', 1)
+    .attr('opacity', d => d.enabled ? 1 : .65);
 
-  // Status indicator: small text label
-  nodeElements.append('text')
-    .attr('class', 'node-status-label')
-    .attr('x', NODE_W / 2)
-    .attr('y', 14)
-    .attr('fill', d => statusColor(d))
-    .text(d => statusText(d));
+  nodeElements.append('rect')
+    .attr('class', 'node-card-accent')
+    .attr('x', 0).attr('y', 12)
+    .attr('width', 3).attr('height', NODE_H - 24)
+    .attr('rx', 1.5)
+    .attr('fill', d => d.teamColor);
+
+  nodeElements.append('circle')
+    .attr('class', 'node-card-status-dot')
+    .attr('cx', NODE_W - 16).attr('cy', 18)
+    .attr('r', 4)
+    .attr('fill', d => statusColor(d));
 
   nodeElements.append('text')
-    .attr('class', 'node-label')
-    .attr('x', NODE_W / 2)
-    .attr('y', 30)
+    .attr('class', 'node-card-name')
+    .attr('x', 14).attr('y', 22)
     .text(d => truncate(d.name, 24));
 
   nodeElements.append('text')
-    .attr('class', 'node-team-label')
-    .attr('x', NODE_W / 2)
-    .attr('y', 44)
+    .attr('class', 'node-card-desc')
+    .attr('x', 14).attr('y', 36)
+    .text(d => truncate(d.description || '', 38));
+
+  nodeElements.append('circle')
+    .attr('class', 'node-card-team-dot')
+    .attr('cx', 20).attr('cy', 52)
+    .attr('r', 3.5)
+    .attr('fill', d => d.teamColor);
+
+  nodeElements.append('text')
+    .attr('class', 'node-card-team-name')
+    .attr('x', 30).attr('y', 55)
     .text(d => {
       if (d.team === 'all') return 'Master Gate';
       const t = graphData.teams[d.team];
       return t ? t.name : d.team;
     });
 
+  nodeElements.append('line')
+    .attr('class', 'node-card-sep')
+    .attr('x1', 12).attr('x2', NODE_W - 12)
+    .attr('y1', 66).attr('y2', 66);
+
   nodeElements.append('text')
-    .attr('class', 'node-blocker-label')
-    .attr('x', NODE_W / 2)
-    .attr('y', 60)
-    .attr('fill', d => {
-      if (!d.enabled && d.prerequisitesMet) return '#38bdf8';
-      return '#ef4444';
-    })
-    .text(d => truncate(blockerLine(d), 28));
+    .attr('class', 'node-card-metric-label')
+    .attr('x', 14).attr('y', 84)
+    .text('Status');
+
+  nodeElements.append('text')
+    .attr('class', 'node-card-metric-val node-card-status-val')
+    .attr('x', NODE_W - 14).attr('y', 84)
+    .attr('fill', d => statusColor(d))
+    .text(d => statusText(d));
+
+  nodeElements.append('text')
+    .attr('class', 'node-card-metric-label')
+    .attr('x', 14).attr('y', 101)
+    .text('Prerequisites');
+
+  nodeElements.append('text')
+    .attr('class', 'node-card-metric-val node-card-prereq-val')
+    .attr('x', NODE_W - 14).attr('y', 101)
+    .attr('fill', d => prereqColor(d))
+    .text(d => prereqLabel(d));
+
+  nodeElements.append('text')
+    .attr('class', 'node-card-metric-label')
+    .attr('x', 14).attr('y', 118)
+    .text('Dependents');
+
+  nodeElements.append('text')
+    .attr('class', 'node-card-metric-val node-card-deps-val')
+    .attr('x', NODE_W - 14).attr('y', 118)
+    .attr('fill', 'rgba(255,255,255,.45)')
+    .text(d => graphData.links.filter(l => (l.source.id || l.source) === d.id).length.toString());
 
   updateVisuals();
 }
@@ -1187,6 +1231,19 @@ function statusColor(d) {
   return '#64748b';
 }
 
+function prereqColor(d) {
+  const total = graphData.links.filter(l => (l.target.id || l.target) === d.id).length;
+  const met = graphData.links.filter(l => (l.target.id || l.target) === d.id && l.met).length;
+  if (total === 0) return 'rgba(255,255,255,.3)';
+  return met === total ? '#10b981' : '#f59e0b';
+}
+
+function prereqLabel(d) {
+  const total = graphData.links.filter(l => (l.target.id || l.target) === d.id).length;
+  const met = graphData.links.filter(l => (l.target.id || l.target) === d.id && l.met).length;
+  return total === 0 ? 'None' : `${met}/${total}`;
+}
+
 function blockerLine(d) {
   if (d.enabled && d.effective) return '';
   if (d.enabled && !d.effective) {
@@ -1202,7 +1259,7 @@ function blockerLine(d) {
 }
 
 function assignPositions(width, height) {
-  const yScale = d3.scaleLinear().domain([0, 3]).range([height * 0.12, height * 0.85]);
+  const yScale = d3.scaleLinear().domain([0, 3]).range([height * 0.10, height * 0.90]);
   const layerNodes = {};
   graphData.nodes.forEach(n => {
     const layer = LAYERS[n.team]?.y ?? 2;
@@ -1212,10 +1269,11 @@ function assignPositions(width, height) {
 
   Object.entries(layerNodes).forEach(([layer, nodes]) => {
     const y = yScale(Number(layer));
-    const totalW = nodes.length * (NODE_W + 40) - 40;
+    const gap = 30;
+    const totalW = nodes.length * (NODE_W + gap) - gap;
     const startX = (width - totalW) / 2 + NODE_W / 2;
     nodes.forEach((n, i) => {
-      n.x = startX + i * (NODE_W + 40);
+      n.x = startX + i * (NODE_W + gap);
       n.y = y;
     });
   });
@@ -1246,36 +1304,41 @@ function computeLinkPath(link) {
 function updateVisuals() {
   if (!nodeElements) return;
 
-  nodeElements.select('.node-rect')
+  nodeElements.select('.node-card-bg')
     .transition().duration(400)
-    .attr('fill', d => d.enabled ? d.teamColor : shadeColor(d.teamColor, -50))
-    .attr('opacity', d => d.enabled ? 1 : .55)
     .attr('stroke', d => {
+      if (d.enabled && d.effective) return 'rgba(16,185,129,.4)';
+      if (d.enabled && !d.effective) return 'rgba(245,158,11,.4)';
+      if (!d.enabled && d.prerequisitesMet) return 'rgba(56,189,248,.35)';
+      return d.teamColor + '44';
+    })
+    .attr('stroke-width', d => {
+      if (d.enabled && d.effective) return 1.5;
+      if (!d.enabled && d.prerequisitesMet) return 1.5;
+      return 1;
+    })
+    .attr('opacity', d => d.enabled ? 1 : .65);
+
+  nodeElements.select('.node-card-accent')
+    .transition().duration(400)
+    .attr('fill', d => {
       if (d.enabled && d.effective) return '#10b981';
       if (d.enabled && !d.effective) return '#f59e0b';
       if (!d.enabled && d.prerequisitesMet) return '#38bdf8';
       return d.teamColor;
-    })
-    .attr('stroke-width', d => {
-      if (d.enabled && d.effective) return 3;
-      if (!d.enabled && d.prerequisitesMet) return 2.5;
-      return 2;
-    })
-    .attr('stroke-dasharray', d => {
-      if (!d.enabled && d.prerequisitesMet) return '4 2';
-      return null;
     });
 
-  nodeElements.select('.node-status-label')
+  nodeElements.select('.node-card-status-dot')
+    .transition().duration(400)
+    .attr('fill', d => statusColor(d));
+
+  nodeElements.select('.node-card-status-val')
     .text(d => statusText(d))
     .attr('fill', d => statusColor(d));
 
-  nodeElements.select('.node-blocker-label')
-    .text(d => truncate(blockerLine(d), 28))
-    .attr('fill', d => {
-      if (!d.enabled && d.prerequisitesMet) return '#38bdf8';
-      return '#ef4444';
-    });
+  nodeElements.select('.node-card-prereq-val')
+    .text(d => prereqLabel(d))
+    .attr('fill', d => prereqColor(d));
 
   linkElements.select('.link')
     .attr('class', d => `link ${d.met ? 'met' : 'unmet'}`)
@@ -1391,25 +1454,25 @@ function showDetail(nodeId) {
 }
 
 function highlightNode(nodeId) {
-  nodeElements.select('.node-rect')
+  nodeElements.select('.node-card-bg')
     .transition().duration(200)
-    .attr('opacity', d => d.id === nodeId ? 1 : (d.enabled ? .8 : .35));
+    .attr('opacity', d => d.id === nodeId ? 1 : (d.enabled ? .5 : .25));
 
   linkElements.select('.link')
     .transition().duration(200)
     .attr('opacity', d => {
       const src = d.source.id || d.source;
       const tgt = d.target.id || d.target;
-      return (src === nodeId || tgt === nodeId) ? 1 : .15;
+      return (src === nodeId || tgt === nodeId) ? 1 : .1;
     });
 
   setTimeout(() => {
-    nodeElements.select('.node-rect')
+    nodeElements.select('.node-card-bg')
       .transition().duration(400)
-      .attr('opacity', d => d.enabled ? 1 : .55);
+      .attr('opacity', d => d.enabled ? 1 : .65);
     linkElements.select('.link')
       .transition().duration(400)
-      .attr('opacity', d => d.met ? .7 : .5);
+      .attr('opacity', 1);
   }, 2000);
 }
 
@@ -1622,41 +1685,41 @@ function renderComplete(totalSteps) {
 
 function highlightFlags(keys, dimOthers = true) {
   const keySet = new Set(keys);
-  nodeElements.select('.node-rect')
+  nodeElements.select('.node-card-bg')
     .transition().duration(300)
-    .attr('opacity', d => keySet.has(d.id) ? 1 : (dimOthers ? .25 : (d.enabled ? 1 : .55)));
+    .attr('opacity', d => keySet.has(d.id) ? 1 : (dimOthers ? .2 : (d.enabled ? 1 : .65)));
   linkElements.select('.link')
     .transition().duration(300)
     .attr('opacity', d => {
       const src = d.source.id || d.source;
       const tgt = d.target.id || d.target;
-      return (keySet.has(src) || keySet.has(tgt)) ? .8 : .1;
+      return (keySet.has(src) || keySet.has(tgt)) ? .8 : .08;
     });
 }
 
 function flashNodes(keys) {
   keys.forEach(k => {
     const node = nodeElements.filter(d => d.id === k);
-    node.select('.node-rect')
+    node.select('.node-card-bg')
       .transition().duration(200)
-      .attr('stroke-width', 5)
+      .attr('stroke-width', 3)
       .transition().duration(600)
-      .attr('stroke-width', d => (d.enabled && d.effective) ? 3 : 2);
+      .attr('stroke-width', d => (d.enabled && d.effective) ? 1.5 : 1);
   });
 }
 
 function restoreOpacity() {
-  nodeElements.select('.node-rect')
+  nodeElements.select('.node-card-bg')
     .transition().duration(400)
-    .attr('opacity', d => d.enabled ? 1 : .55);
+    .attr('opacity', d => d.enabled ? 1 : .65);
   linkElements.select('.link')
     .transition().duration(400)
-    .attr('opacity', d => d.met ? .7 : .5)
-    .attr('stroke-width', 2);
+    .attr('opacity', 1)
+    .attr('stroke-width', 1.5);
 }
 
-async function syncGraph() {
-  const snap = await fetch(`${API}/api/graph`).then(r => r.json());
+function syncGraph() {
+  const snap = AppStore.getGraph();
   graphData.nodes.forEach((n, i) => {
     n.enabled = snap.nodes[i].enabled;
     n.effective = snap.nodes[i].effective;
@@ -1667,12 +1730,8 @@ async function syncGraph() {
   updateVisuals();
 }
 
-async function enableFlag(key) {
-  await fetch(`${API}/api/flags/${key}/toggle`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ enabled: true }),
-  });
+function enableFlag(key) {
+  AppStore.toggle(key, true);
 }
 
 // ── Rollout State Machine ────────────────────────────────────────────────
@@ -1729,13 +1788,13 @@ async function executeStep(idx, animate) {
       highlightFlags([event.key, ...prereqKeys]);
 
       const blockedNode = nodeElements.filter(d => d.id === event.key);
-      blockedNode.select('.node-rect')
+      blockedNode.select('.node-card-bg')
         .transition().duration(300)
-        .attr('stroke', '#ef4444')
-        .attr('stroke-width', 4)
+        .attr('stroke', 'rgba(239,68,68,.6)')
+        .attr('stroke-width', 2.5)
         .transition().duration(600)
-        .attr('stroke', d => d.teamColor)
-        .attr('stroke-width', 2);
+        .attr('stroke', d => d.teamColor + '44')
+        .attr('stroke-width', 1);
     }
 
   } else if (event.type === 'enable') {
@@ -1769,7 +1828,7 @@ async function executeStep(idx, animate) {
 // Replay flag state from scratch up to (but not including) targetIdx,
 // then execute targetIdx with animations.
 async function jumpToStep(targetIdx) {
-  await fetch(`${API}/api/flags/reset`, { method: 'POST' });
+  AppStore.reset();
   rolloutLogEntries = [];
 
   // Silently replay all flag-changing steps before targetIdx
@@ -1820,16 +1879,16 @@ function scheduleAutoAdvance() {
 
 // ── Transport Controls ──────────────────────────────────────────────────
 
-async function vizReset() {
+function vizReset() {
   rolloutStop();
-  await fetch(`${API}/api/flags/reset`, { method: 'POST' });
-  await refreshStates();
+  AppStore.reset();
+  refreshStates();
 }
 
-async function vizEnableAll() {
+function vizEnableAll() {
   rolloutStop();
-  await fetch(`${API}/api/flags/enable-all`, { method: 'POST' });
-  await refreshStates();
+  AppStore.enableAll();
+  refreshStates();
 }
 
 async function vizRollout() {
@@ -1838,9 +1897,9 @@ async function vizRollout() {
   rolloutLogEntries = [];
   scenarioIdx = -1;
 
-  scenarioSteps = await fetch(`${API}/api/flags/scenario`).then(r => r.json());
-  await fetch(`${API}/api/flags/reset`, { method: 'POST' });
-  await syncGraph();
+  scenarioSteps = AppStore.getScenario();
+  AppStore.reset();
+  syncGraph();
 
   showTransportControls();
   openRolloutPanel();
@@ -1925,7 +1984,7 @@ window.addEventListener('resize', () => {
   nodeElements.attr('transform', d => `translate(${d.x - NODE_W/2}, ${d.y - NODE_H/2})`);
   linkElements.select('path').attr('d', d => computeLinkPath(d));
 
-  const yScaleR = d3.scaleLinear().domain([0, 3]).range([h * 0.12, h * 0.85]);
+  const yScaleR = d3.scaleLinear().domain([0, 3]).range([h * 0.10, h * 0.90]);
   const loR = NODE_H / 2 + 18;
   g.selectAll('.layer-label').each(function(d) {
     d3.select(this).attr('y', yScaleR(d.y) - loR);

@@ -67,6 +67,64 @@
       font-size: .8rem;
     }
 
+    .legend-item.clickable {
+      cursor: pointer;
+      user-select: none;
+      border-radius: 4px;
+      padding: .3rem .4rem;
+      margin: 0 -.4rem;
+      transition: background .15s, opacity .2s;
+    }
+
+    .legend-item.clickable:hover {
+      background: rgba(255,255,255,.05);
+    }
+
+    .legend-item.deselected {
+      opacity: .4;
+    }
+
+    .legend-item.deselected span {
+      text-decoration: line-through;
+    }
+
+    .legend-count {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .7rem;
+      color: var(--text-dim);
+      text-decoration: none !important;
+      display: inline;
+    }
+
+    .legend-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: .75rem;
+    }
+
+    .legend-header h4 {
+      margin-bottom: 0;
+    }
+
+    .legend-toggle-all {
+      font-size: .68rem;
+      font-weight: 500;
+      color: var(--accent);
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-family: inherit;
+      padding: .1rem .3rem;
+      border-radius: 3px;
+      transition: background .15s, color .15s;
+    }
+
+    .legend-toggle-all:hover {
+      background: rgba(99,102,241,.12);
+      color: #818cf8;
+    }
+
     .legend-dot {
       width: 14px;
       height: 14px;
@@ -110,6 +168,29 @@
     .sidebar-tab.active {
       color: var(--accent);
       border-bottom-color: var(--accent);
+    }
+
+    .sidebar-tab.disabled {
+      opacity: .35;
+      cursor: not-allowed;
+      pointer-events: none;
+      position: relative;
+    }
+
+    .sidebar-tab .tab-lock-hint {
+      display: none;
+      font-size: .62rem;
+      font-weight: 500;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+
+    .sidebar-tab.disabled .tab-lock-hint {
+      display: block;
+    }
+
+    .sidebar-tab.disabled .tab-label-text {
+      opacity: .6;
     }
 
     .sidebar-panel {
@@ -295,13 +376,14 @@
     .graph-area {
       flex: 1;
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       position: relative;
       overflow: hidden;
     }
 
     .graph-canvas {
       flex: 1;
+      min-width: 0;
       position: relative;
       overflow: hidden;
       background:
@@ -329,7 +411,41 @@
       filter: brightness(1.18) drop-shadow(0 0 24px rgba(0,0,0,.6));
     }
 
-    .node-card-accent { pointer-events: none; }
+    /* ── Rollout focus ring animations ─────────────────────────────── */
+    @keyframes pulse-ring-green {
+      0%, 100% { stroke-width: 2.5; filter: drop-shadow(0 0 6px rgba(16, 185, 129, .4)); }
+      50%      { stroke-width: 3.5; filter: drop-shadow(0 0 14px rgba(16, 185, 129, .7)); }
+    }
+    @keyframes pulse-ring-red {
+      0%, 100% { stroke-width: 2.5; filter: drop-shadow(0 0 6px rgba(239, 68, 68, .4)); }
+      50%      { stroke-width: 3.5; filter: drop-shadow(0 0 14px rgba(239, 68, 68, .7)); }
+    }
+    @keyframes pulse-ring-blue {
+      0%, 100% { stroke-width: 2; filter: drop-shadow(0 0 5px rgba(99, 102, 241, .35)); }
+      50%      { stroke-width: 3; filter: drop-shadow(0 0 12px rgba(99, 102, 241, .6)); }
+    }
+    @keyframes pulse-ring-amber {
+      0%, 100% { stroke-width: 2.5; filter: drop-shadow(0 0 6px rgba(245, 158, 11, .4)); }
+      50%      { stroke-width: 3.5; filter: drop-shadow(0 0 14px rgba(245, 158, 11, .7)); }
+    }
+
+    .rollout-focus-enable .node-card-bg {
+      stroke: rgba(16, 185, 129, .8) !important;
+      animation: pulse-ring-green 1.2s ease-in-out infinite;
+    }
+    .rollout-focus-blocked .node-card-bg {
+      stroke: rgba(239, 68, 68, .8) !important;
+      animation: pulse-ring-red 1.2s ease-in-out infinite;
+    }
+    .rollout-focus-prereq .node-card-bg {
+      stroke: rgba(245, 158, 11, .7) !important;
+      animation: pulse-ring-amber 1.2s ease-in-out infinite;
+    }
+    .rollout-focus-narration .node-card-bg {
+      stroke: rgba(99, 102, 241, .7) !important;
+      animation: pulse-ring-blue 1.2s ease-in-out infinite;
+    }
+
 
     .node-card-name {
       fill: #e2e8f0;
@@ -369,6 +485,16 @@
       pointer-events: none;
     }
 
+    .node-card-section-label {
+      fill: rgba(255,255,255,.3);
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      font-size: 7.5px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+
     .node-card-metric-val {
       font-family: 'JetBrains Mono', monospace;
       font-weight: 600;
@@ -377,32 +503,55 @@
       pointer-events: none;
     }
 
+    .node-card-dep-name {
+      pointer-events: none;
+    }
+
+    .node-card-prereq-dot,
+    .node-card-dep-dot {
+      pointer-events: none;
+      transition: fill .3s;
+    }
+
     .node-card-status-dot {
       pointer-events: none;
       transition: fill .3s;
     }
 
+    @keyframes dashFlow {
+      to { stroke-dashoffset: -13; }
+    }
+
     .link {
       fill: none;
-      stroke-width: 1.5;
       stroke-dasharray: 8 5;
     }
 
     .link.met {
-      stroke: rgba(16, 185, 129, .4);
+      stroke: rgba(16, 185, 129, .55);
+      stroke-width: 2;
+      filter: drop-shadow(0 0 3px rgba(16, 185, 129, .25));
+      animation: dashFlow .9s linear infinite;
+    }
+
+    .link.blocking {
+      stroke: rgba(245, 158, 11, .55);
+      stroke-width: 2;
+      filter: drop-shadow(0 0 3px rgba(245, 158, 11, .25));
+      animation: dashFlow .9s linear infinite;
+    }
+
+    .link.broken {
+      stroke: rgba(239, 68, 68, .55);
+      stroke-width: 2;
+      filter: drop-shadow(0 0 3px rgba(239, 68, 68, .25));
+      animation: dashFlow .9s linear infinite;
     }
 
     .link.unmet {
-      stroke: rgba(71, 85, 105, .45);
+      stroke: rgba(71, 85, 105, .3);
+      stroke-width: 1.5;
     }
-
-
-    .particle {
-      fill: var(--success);
-      opacity: 0;
-    }
-
-    .particle.active { opacity: .6; }
 
     .layer-label {
       fill: rgba(255,255,255,.06);
@@ -442,49 +591,155 @@
     .graph-tooltip .tt-desc { color: var(--text-dim); font-size: .72rem; }
     .graph-tooltip .tt-status { margin-top: .4rem; font-weight: 600; }
 
-    /* ── Rollout Narration Panel ──────────────────────────────────────── */
-    .rollout-panel {
+    /* ── Confirm Modal ─────────────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .6);
+      backdrop-filter: blur(4px);
+      z-index: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s;
+    }
+
+    .modal-overlay.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-box {
       background: var(--bg-card);
-      border-top: 1px solid var(--border);
-      max-height: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem;
+      width: 380px;
+      max-width: 90vw;
+      box-shadow: 0 8px 40px rgba(0, 0, 0, .5);
+      text-align: center;
+      transform: scale(.95);
+      transition: transform .25s;
+    }
+
+    .modal-overlay.visible .modal-box {
+      transform: scale(1);
+    }
+
+    .modal-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      margin: 0 auto 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: .5rem;
+    }
+
+    .modal-message {
+      font-size: .85rem;
+      color: var(--text-dim);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: .75rem;
+      justify-content: center;
+    }
+
+    .modal-actions .btn {
+      flex: 1;
+      justify-content: center;
+      padding: .65rem 1rem;
+    }
+
+    .modal-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, .2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: modal-spin .6s linear infinite;
+      margin-right: .5rem;
+      vertical-align: middle;
+    }
+
+    @keyframes modal-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .modal-check {
+      color: var(--success);
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    /* ── Rollout Narration Panel (right-side split) ──────────────────── */
+    .rollout-panel {
+      width: 0;
+      min-width: 0;
+      background: var(--bg-card);
+      border-left: 1px solid var(--border);
       overflow: hidden;
-      transition: max-height .4s ease, padding .4s ease;
-      padding: 0 1.5rem;
+      transition: width .4s ease, min-width .4s ease;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
     }
 
     .rollout-panel.open {
-      max-height: 360px;
-      padding: 1.25rem 1.5rem;
-      overflow-y: auto;
+      width: 400px;
+      min-width: 400px;
     }
 
+    .rp-inner {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-width: 400px;
+    }
+
+    /* Top: header + progress */
     .rp-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: .75rem;
+      padding: 1rem 1.25rem .5rem;
+      flex-shrink: 0;
     }
 
     .rp-header h3 {
-      font-size: .85rem;
+      font-size: .82rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: .06em;
     }
 
     .rp-step-counter {
-      font-size: .8rem;
+      font-size: .78rem;
       font-weight: 600;
       color: var(--accent);
       font-family: 'JetBrains Mono', monospace;
     }
 
     .rp-progress {
-      height: 6px;
+      height: 4px;
       background: var(--border);
       border-radius: 999px;
       overflow: hidden;
-      margin-bottom: 1rem;
+      margin: 0 1.25rem .75rem;
+      flex-shrink: 0;
     }
 
     .rp-progress-fill {
@@ -495,14 +750,15 @@
       width: 0;
     }
 
-    .rp-body {
-      display: grid;
-      grid-template-columns: 1.2fr 1fr;
-      gap: 1.25rem;
-      align-items: start;
+    /* Current step detail area */
+    .rp-detail {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 1.25rem 1rem;
+      min-height: 0;
+      border-bottom: 1px solid var(--border);
     }
 
-    /* Left side: current event detail */
     .rp-event { min-width: 0; }
 
     .rp-event-badge {
@@ -541,9 +797,10 @@
     }
 
     .rp-event-title {
-      font-size: .95rem;
+      font-size: .92rem;
       font-weight: 700;
       margin-bottom: .15rem;
+      line-height: 1.35;
     }
 
     .rp-event-team {
@@ -618,61 +875,24 @@
       100% { opacity: 1; transform: translateX(0); }
     }
 
-    /* Right side: event log */
-    .rp-log-container { min-width: 0; }
-
-    .rp-log-title {
-      font-size: .7rem;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-      color: var(--text-dim);
-      margin-bottom: .4rem;
-    }
-
-    .rp-log {
-      max-height: 180px;
-      overflow-y: auto;
-      border: 1px solid var(--border);
+    .rp-ld-insight {
+      margin-top: .75rem;
+      padding: .65rem .85rem;
       border-radius: 8px;
-      background: var(--bg);
-      padding: .4rem;
-    }
-
-    .rp-log-entry {
-      padding: .25rem .5rem;
-      font-size: .7rem;
-      font-family: 'JetBrains Mono', monospace;
+      background: rgba(99, 102, 241, .08);
+      border-left: 3px solid var(--accent);
+      font-size: .72rem;
+      line-height: 1.55;
       color: var(--text-dim);
-      border-radius: 4px;
-      display: flex;
-      align-items: center;
-      gap: .4rem;
-      animation: fade-in .25s ease-out;
     }
 
-    .rp-log-entry .le-marker {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    .rp-log-entry.blocked .le-marker { background: var(--danger); }
-    .rp-log-entry.enabled .le-marker { background: var(--success); }
-    .rp-log-entry.cascade .le-marker { background: var(--accent); }
-    .rp-log-entry.narration .le-marker { background: #475569; }
-
-    .rp-log-entry .le-label {
-      font-weight: 600;
-      font-size: .62rem;
+    .rp-ld-insight strong {
+      color: var(--accent);
+      font-weight: 700;
+      font-size: .68rem;
       text-transform: uppercase;
-      min-width: 52px;
+      letter-spacing: .04em;
     }
-
-    .rp-log-entry.blocked .le-label { color: var(--danger); }
-    .rp-log-entry.enabled .le-label { color: var(--success); }
-    .rp-log-entry.cascade .le-label { color: var(--accent); }
-    .rp-log-entry.narration .le-label { color: #475569; }
 
     .rp-complete {
       text-align: center;
@@ -681,6 +901,130 @@
 
     .rp-complete h4 { font-size: 1rem; color: var(--success); margin-bottom: .35rem; }
     .rp-complete p { font-size: .82rem; color: var(--text-dim); line-height: 1.6; }
+
+    /* ── Step Timeline ──────────────────────────────────────────────── */
+    .rp-timeline-section {
+      flex-shrink: 0;
+      max-height: 40%;
+      overflow-y: auto;
+      padding: .75rem 1.25rem 1rem;
+    }
+
+    .rp-timeline-title {
+      font-size: .68rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-dim);
+      font-weight: 600;
+      margin-bottom: .6rem;
+    }
+
+    .rp-timeline {
+      position: relative;
+      padding-left: 20px;
+    }
+
+    .rp-timeline::before {
+      content: '';
+      position: absolute;
+      left: 5px;
+      top: 4px;
+      bottom: 4px;
+      width: 2px;
+      background: var(--border);
+      border-radius: 1px;
+    }
+
+    .tl-step {
+      position: relative;
+      padding: .3rem 0 .3rem .75rem;
+      display: flex;
+      align-items: flex-start;
+      gap: .5rem;
+      transition: opacity .3s;
+    }
+
+    .tl-step.past { opacity: .5; }
+    .tl-step.future { opacity: .35; }
+    .tl-step.current { opacity: 1; }
+
+    .tl-dot {
+      position: absolute;
+      left: -20px;
+      top: .35rem;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--bg-card);
+      flex-shrink: 0;
+      transition: all .3s;
+      z-index: 1;
+    }
+
+    .tl-step.past .tl-dot {
+      background: var(--text-dim);
+      border-color: var(--text-dim);
+      width: 10px;
+      height: 10px;
+      top: .4rem;
+      left: -19px;
+    }
+
+    .tl-step.current .tl-dot {
+      width: 14px;
+      height: 14px;
+      top: .3rem;
+      left: -21px;
+      border: none;
+      box-shadow: 0 0 0 3px rgba(99,102,241,.25);
+    }
+
+    .tl-step.current .tl-dot.type-narration { background: #94a3b8; box-shadow: 0 0 0 3px rgba(148,163,184,.25); }
+    .tl-step.current .tl-dot.type-blocked   { background: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,.25); }
+    .tl-step.current .tl-dot.type-enable    { background: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,.25); }
+    .tl-step.current .tl-dot.type-cascade   { background: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.25); }
+
+    .tl-content {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .tl-label {
+      font-size: .7rem;
+      font-weight: 500;
+      color: var(--text-dim);
+      line-height: 1.35;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tl-step.current .tl-label {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .tl-type-badge {
+      font-size: .58rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-top: 1px;
+    }
+
+    .tl-type-badge.narration { color: #64748b; }
+    .tl-type-badge.blocked   { color: #ef4444; }
+    .tl-type-badge.enable    { color: #10b981; }
+    .tl-type-badge.cascade   { color: #6366f1; }
+
+    .tl-step.current .tl-step-bg {
+      position: absolute;
+      inset: 0 -.5rem;
+      background: rgba(99,102,241,.06);
+      border-radius: 6px;
+      pointer-events: none;
+    }
 
     /* ── Transport Controls ────────────────────────────────────────────── */
     .transport-controls {
@@ -746,54 +1090,45 @@
   <div class="sidebar">
     <div class="sidebar-header">
       <h2>Flag Dependency Graph</h2>
-      <p>Visualizing prerequisite relationships across all 5 engineering teams for the Checkout v2 release.</p>
+      <p>Visualizing prerequisite relationships across 2 engineering teams for the Checkout v2 release.</p>
     </div>
 
     <div class="sidebar-tabs">
-      <button class="sidebar-tab active" onclick="switchSidebarTab('info')">Graph Info</button>
-      <button class="sidebar-tab" onclick="switchSidebarTab('controls')">Flag Controls</button>
+      <button class="sidebar-tab active" onclick="switchSidebarTab('info')"><span class="tab-label-text">Graph Info</span></button>
+      <button class="sidebar-tab" id="flagControlsTab" onclick="switchSidebarTab('controls')"><span class="tab-label-text">Flag Controls</span><span class="tab-lock-hint">Exit animation to edit</span></button>
     </div>
 
     <!-- ── Panel 1: Graph Info (legends, detail, animation controls) ── -->
     <div class="sidebar-panel active" id="panelInfo">
       <div class="legend">
-        <h4>Teams</h4>
-        <div id="legendTeams"></div>
-        <div class="legend-item" style="margin-top:.5rem">
-          <div class="legend-dot" style="background: #f472b6"></div>
-          <span>Master Release Gate</span>
+        <div class="legend-header">
+          <h4>Teams</h4>
+          <button class="legend-toggle-all" id="teamToggleAll" onclick="toggleAllTeams()">Deselect All</button>
         </div>
+        <div id="legendTeams"></div>
       </div>
 
       <div class="legend">
-        <h4>Flag Status</h4>
-        <div class="legend-item">
-          <div class="legend-dot" style="background: #10b981"></div>
-          <span>Active — enabled and effective</span>
+        <div class="legend-header">
+          <h4>Flag Status</h4>
+          <button class="legend-toggle-all" id="statusToggleAll" onclick="toggleAllStatuses()">Deselect All</button>
         </div>
-        <div class="legend-item">
-          <div class="legend-dot" style="background: #38bdf8"></div>
-          <span>Ready — prereqs met, can enable</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-dot" style="background: #64748b"></div>
-          <span>Off — prereqs not yet met</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-dot" style="background: #f59e0b"></div>
-          <span>Blocked — on but prereqs unmet</span>
-        </div>
+        <div id="legendStatuses"></div>
       </div>
 
       <div class="legend">
         <h4>Edge Status</h4>
         <div class="legend-item">
           <div class="legend-line" style="background: var(--success)"></div>
-          <span>Prerequisite met (data flowing)</span>
+          <span>Prerequisite met (upstream on)</span>
         </div>
         <div class="legend-item">
-          <div class="legend-line" style="background: #475569; background-image: repeating-linear-gradient(90deg, #475569 0 6px, transparent 6px 10px)"></div>
-          <span>Prerequisite unmet (blocked)</span>
+          <div class="legend-line" style="background: #f59e0b"></div>
+          <span>Blocking (upstream off)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-line" style="background: #ef4444"></div>
+          <span>Missing prerequisite (downstream on)</span>
         </div>
       </div>
 
@@ -817,7 +1152,7 @@
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M4 2l6 5-6 5V2z" fill="currentColor"/><rect x="10" y="2" width="2" height="10" rx="0.5" fill="currentColor"/></svg>
           </button>
         </div>
-        <div class="transport-label" id="transportLabel">Step 1 / 19</div>
+        <div class="transport-label" id="transportLabel">Step 1 / 10</div>
         <button class="btn danger" style="width:100%;justify-content:center;font-size:.78rem" onclick="rolloutStop()">Exit Walkthrough</button>
       </div>
 
@@ -844,6 +1179,24 @@
   </div>
 </div>
 
+<!-- ── Confirm Reset Modal ──────────────────────────────────────────── -->
+<div class="modal-overlay" id="resetModal">
+  <div class="modal-box">
+    <div class="modal-icon" style="background: rgba(239, 68, 68, .12)">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+        <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+      </svg>
+    </div>
+    <div class="modal-title" id="resetModalTitle">Reset All Flags?</div>
+    <div class="modal-message" id="resetModalMsg">This will turn off all 5 flags and reset the demo to its initial state.</div>
+    <div class="modal-actions" id="resetModalActions">
+      <button class="btn" onclick="closeResetModal()">Cancel</button>
+      <button class="btn danger" id="resetConfirmBtn" onclick="confirmReset()">Reset Flags</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
@@ -851,16 +1204,16 @@ let graphData = null;
 let selectedNode = null;
 let rolloutRunning = false;
 let svg, g;
-let nodeElements, linkElements, particleElements;
-const NODE_W = 200, NODE_H = 140;
+let nodeElements, linkElements;
+const NODE_W = 220, NODE_H = 200;
+
+const hiddenTeams = new Set();
+const hiddenStatuses = new Set();
 
 const LAYERS = {
-  infrastructure: { y: 0 },
-  api:            { y: 1 },
-  web:            { y: 2 },
-  mobile:         { y: 2 },
-  data:           { y: 2 },
-  all:            { y: 3 },
+  api: { y: 0 },
+  web: { y: 1 },
+  all: { y: 2 },
 };
 
 async function init() {
@@ -868,7 +1221,6 @@ async function init() {
   await fetchGraph();
   buildLegend();
   buildGraph();
-  startParticles();
   setInterval(refreshStates, 3000);
 }
 
@@ -889,22 +1241,137 @@ async function refreshStates() {
     l.met = fresh.links[i].met;
   });
   updateVisuals();
+  rebuildTeamLegend();
+  rebuildStatusLegend();
   if (selectedNode) showDetail(selectedNode);
   if (document.getElementById('panelControls').classList.contains('active')) buildFlagControls();
 }
 
 function buildLegend() {
+  rebuildTeamLegend();
+  rebuildStatusLegend();
+}
+
+function rebuildTeamLegend() {
   const container = document.getElementById('legendTeams');
+  let html = '';
   Object.entries(graphData.teams).forEach(([key, team]) => {
-    container.innerHTML += `
-      <div class="legend-item">
-        <div class="legend-dot" style="background: ${team.color}"></div>
-        <span>${team.name}</span>
-      </div>`;
+    const count = graphData.nodes.filter(n => n.team === key).length;
+    const cls = hiddenTeams.has(key) ? ' deselected' : '';
+    html += `<div class="legend-item clickable${cls}" onclick="toggleTeamFilter('${key}')">
+      <div class="legend-dot" style="background: ${team.color}"></div>
+      <span>${team.name} <span class="legend-count">(${count})</span></span>
+    </div>`;
   });
+  const gateCount = graphData.nodes.filter(n => n.team === 'all').length;
+  const gateCls = hiddenTeams.has('all') ? ' deselected' : '';
+  html += `<div class="legend-item clickable${gateCls}" style="margin-top:.5rem" onclick="toggleTeamFilter('all')">
+    <div class="legend-dot" style="background: #f472b6"></div>
+    <span>Master Release Gate <span class="legend-count">(${gateCount})</span></span>
+  </div>`;
+  container.innerHTML = html;
+  const allKeys = [...Object.keys(graphData.teams), 'all'];
+  const btn = document.getElementById('teamToggleAll');
+  if (btn) btn.textContent = allKeys.every(k => hiddenTeams.has(k)) ? 'Select All' : 'Deselect All';
+}
+
+function rebuildStatusLegend() {
+  const container = document.getElementById('legendStatuses');
+  const defs = [
+    { key: 'active', label: 'Active — enabled and effective', color: '#10b981' },
+    { key: 'ready', label: 'Ready — prereqs met, can enable', color: '#38bdf8' },
+    { key: 'off', label: 'Off — prereqs not yet met', color: '#64748b' },
+    { key: 'blocked', label: 'Blocked — on but prereqs unmet', color: '#f59e0b' },
+  ];
+  let html = '';
+  defs.forEach(s => {
+    const count = graphData.nodes.filter(n => statusText(n).toLowerCase() === s.key).length;
+    const cls = hiddenStatuses.has(s.key) ? ' deselected' : '';
+    html += `<div class="legend-item clickable${cls}" onclick="toggleStatusFilter('${s.key}')">
+      <div class="legend-dot" style="background: ${s.color}"></div>
+      <span>${s.label} <span class="legend-count">(${count})</span></span>
+    </div>`;
+  });
+  container.innerHTML = html;
+  const allKeys = ['active', 'ready', 'off', 'blocked'];
+  const btn = document.getElementById('statusToggleAll');
+  if (btn) btn.textContent = allKeys.every(k => hiddenStatuses.has(k)) ? 'Select All' : 'Deselect All';
+}
+
+function toggleTeamFilter(key) {
+  if (hiddenTeams.has(key)) hiddenTeams.delete(key);
+  else hiddenTeams.add(key);
+  rebuildTeamLegend();
+  updateVisuals();
+}
+
+function toggleStatusFilter(key) {
+  if (hiddenStatuses.has(key)) hiddenStatuses.delete(key);
+  else hiddenStatuses.add(key);
+  rebuildStatusLegend();
+  updateVisuals();
+}
+
+function toggleAllTeams() {
+  const allKeys = [...Object.keys(graphData.teams), 'all'];
+  const allHidden = allKeys.every(k => hiddenTeams.has(k));
+  if (allHidden) {
+    hiddenTeams.clear();
+  } else {
+    allKeys.forEach(k => hiddenTeams.add(k));
+  }
+  rebuildTeamLegend();
+  updateVisuals();
+}
+
+function toggleAllStatuses() {
+  const allKeys = ['active', 'ready', 'off', 'blocked'];
+  const allHidden = allKeys.every(k => hiddenStatuses.has(k));
+  if (allHidden) {
+    hiddenStatuses.clear();
+  } else {
+    allKeys.forEach(k => hiddenStatuses.add(k));
+  }
+  rebuildStatusLegend();
+  updateVisuals();
+}
+
+function isNodeHidden(d) {
+  if (hiddenTeams.has(d.team)) return true;
+  if (hiddenStatuses.has(statusText(d).toLowerCase())) return true;
+  return false;
+}
+
+function nodeFilterOpacity(d) {
+  if (!isNodeHidden(d)) return null;
+  const hasVisibleNeighbor = graphData.links.some(l => {
+    const srcId = l.source.id || l.source;
+    const tgtId = l.target.id || l.target;
+    if (srcId === d.id) {
+      const tgt = graphData.nodes.find(n => n.id === tgtId);
+      return tgt && !isNodeHidden(tgt);
+    }
+    if (tgtId === d.id) {
+      const src = graphData.nodes.find(n => n.id === srcId);
+      return src && !isNodeHidden(src);
+    }
+    return false;
+  });
+  return hasVisibleNeighbor ? 0.32 : 0.08;
+}
+
+function linkFilterOpacity(d) {
+  const src = graphData.nodes.find(n => n.id === (d.source.id || d.source));
+  const tgt = graphData.nodes.find(n => n.id === (d.target.id || d.target));
+  const srcHidden = src && isNodeHidden(src);
+  const tgtHidden = tgt && isNodeHidden(tgt);
+  if (!srcHidden && !tgtHidden) return null;
+  if (srcHidden && tgtHidden) return 0.08;
+  return 0.45;
 }
 
 function switchSidebarTab(tab) {
+  if (tab === 'controls' && rolloutRunning) return;
   document.querySelectorAll('.sidebar-tab').forEach((btn, i) => {
     btn.classList.toggle('active', (tab === 'info' && i === 0) || (tab === 'controls' && i === 1));
   });
@@ -1037,13 +1504,25 @@ function buildGraph() {
     .attr('d', 'M0,0 L10,5 L0,10 Z')
     .attr('fill', 'rgba(71,85,105,.5)');
 
-  const glow = defs.append('filter').attr('id', 'glow');
-  glow.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'blur');
-  glow.append('feMerge')
-    .selectAll('feMergeNode')
-    .data(['blur', 'SourceGraphic'])
-    .enter().append('feMergeNode')
-    .attr('in', d => d);
+  defs.append('marker')
+    .attr('id', 'arrow-blocking')
+    .attr('viewBox', '0 0 10 10')
+    .attr('refX', 10).attr('refY', 5)
+    .attr('markerWidth', 6).attr('markerHeight', 6)
+    .attr('orient', 'auto')
+    .append('path')
+    .attr('d', 'M0,0 L10,5 L0,10 Z')
+    .attr('fill', 'rgba(245,158,11,.5)');
+
+  defs.append('marker')
+    .attr('id', 'arrow-broken')
+    .attr('viewBox', '0 0 10 10')
+    .attr('refX', 10).attr('refY', 5)
+    .attr('markerWidth', 6).attr('markerHeight', 6)
+    .attr('orient', 'auto')
+    .append('path')
+    .attr('d', 'M0,0 L10,5 L0,10 Z')
+    .attr('fill', 'rgba(239,68,68,.5)');
 
   g = svg.append('g');
 
@@ -1055,13 +1534,12 @@ function buildGraph() {
   assignPositions(width, height);
 
   const layerLabels = [
-    { label: 'INFRASTRUCTURE', y: 0 },
-    { label: 'CORE API', y: 1 },
-    { label: 'WEB / MOBILE / DATA', y: 2 },
-    { label: 'RELEASE GATE', y: 3 },
+    { label: 'CORE API', y: 0 },
+    { label: 'WEB EXPERIENCE', y: 1 },
+    { label: 'RELEASE GATE', y: 2 },
   ];
 
-  const yScale = d3.scaleLinear().domain([0, 3]).range([height * 0.10, height * 0.90]);
+  const yScale = d3.scaleLinear().domain([0, 2]).range([height * 0.18, height * 0.82]);
 
   const labelOffset = NODE_H / 2 + 18;
 
@@ -1074,27 +1552,26 @@ function buildGraph() {
     .text(d => d.label);
 
   g.selectAll('.layer-divider')
-    .data([0.5, 1.5, 2.5])
+    .data([0.5, 1.5])
     .enter().append('line')
     .attr('class', 'layer-divider')
     .attr('x1', 40).attr('x2', width - 40)
     .attr('y1', d => yScale(d))
     .attr('y2', d => yScale(d));
 
-  linkElements = g.selectAll('.link-group')
+  const nodeLayer = g.append('g').attr('class', 'node-layer');
+  const linkLayer = g.append('g').attr('class', 'link-layer');
+
+  linkElements = linkLayer.selectAll('.link-group')
     .data(graphData.links)
     .enter().append('g')
     .attr('class', 'link-group');
 
   linkElements.append('path')
-    .attr('class', d => `link ${d.met ? 'met' : 'unmet'}`)
-    .attr('marker-end', d => `url(#arrow-${d.met ? 'met' : 'unmet'})`)
+    .attr('class', d => `link ${linkState(d)}`)
+    .attr('marker-end', d => `url(#arrow-${linkState(d)})`)
     .attr('d', d => computeLinkPath(d));
 
-  particleElements = linkElements.append('circle')
-    .attr('class', 'particle')
-    .attr('r', 4)
-    .attr('filter', 'url(#glow)');
 
   graphData.nodes.forEach(n => { n.defaultX = n.x; n.defaultY = n.y; });
 
@@ -1117,7 +1594,7 @@ function buildGraph() {
       d3.select(this).classed('dragging', false);
     });
 
-  nodeElements = g.selectAll('.node-group')
+  nodeElements = nodeLayer.selectAll('.node-group')
     .data(graphData.nodes)
     .enter().append('g')
     .attr('class', 'node-group')
@@ -1135,33 +1612,26 @@ function buildGraph() {
     .attr('width', NODE_W)
     .attr('height', NODE_H)
     .attr('rx', 12).attr('ry', 12)
-    .attr('fill', '#1a1d27')
-    .attr('stroke', d => d.teamColor + '44')
-    .attr('stroke-width', 1)
+    .attr('fill', d => statusFill(d))
+    .attr('stroke', d => statusColor(d) + '88')
+    .attr('stroke-width', d => (d.enabled || d.prerequisitesMet) ? 2 : 1.5)
     .attr('opacity', d => d.enabled ? 1 : .65);
-
-  nodeElements.append('rect')
-    .attr('class', 'node-card-accent')
-    .attr('x', 0).attr('y', 12)
-    .attr('width', 3).attr('height', NODE_H - 24)
-    .attr('rx', 1.5)
-    .attr('fill', d => d.teamColor);
 
   nodeElements.append('circle')
     .attr('class', 'node-card-status-dot')
     .attr('cx', NODE_W - 16).attr('cy', 18)
-    .attr('r', 4)
+    .attr('r', 5)
     .attr('fill', d => statusColor(d));
 
   nodeElements.append('text')
     .attr('class', 'node-card-name')
     .attr('x', 14).attr('y', 22)
-    .text(d => truncate(d.name, 24));
+    .text(d => truncate(d.name, 26));
 
   nodeElements.append('text')
     .attr('class', 'node-card-desc')
     .attr('x', 14).attr('y', 36)
-    .text(d => truncate(d.description || '', 38));
+    .text(d => truncate(d.description || '', 40));
 
   nodeElements.append('circle')
     .attr('class', 'node-card-team-dot')
@@ -1178,43 +1648,105 @@ function buildGraph() {
       return t ? t.name : d.team;
     });
 
+  nodeElements.append('text')
+    .attr('class', 'node-card-metric-label')
+    .attr('x', NODE_W - 14).attr('y', 55)
+    .attr('text-anchor', 'end')
+    .attr('fill', d => statusColor(d))
+    .attr('font-weight', '700')
+    .attr('font-size', '8.5px')
+    .text(d => statusText(d));
+
   nodeElements.append('line')
     .attr('class', 'node-card-sep')
     .attr('x1', 12).attr('x2', NODE_W - 12)
     .attr('y1', 66).attr('y2', 66);
 
-  nodeElements.append('text')
-    .attr('class', 'node-card-metric-label')
-    .attr('x', 14).attr('y', 84)
-    .text('Status');
+  nodeElements.each(function(d) {
+    const group = d3.select(this);
+    const prereqs = getPrereqNodes(d);
+    const deps = getDependentNodes(d);
+    const MAX_SHOW = 3;
 
-  nodeElements.append('text')
-    .attr('class', 'node-card-metric-val node-card-status-val')
-    .attr('x', NODE_W - 14).attr('y', 84)
-    .attr('fill', d => statusColor(d))
-    .text(d => statusText(d));
+    let y = 80;
 
-  nodeElements.append('text')
-    .attr('class', 'node-card-metric-label')
-    .attr('x', 14).attr('y', 101)
-    .text('Prerequisites');
+    if (prereqs.length) {
+      group.append('text')
+        .attr('class', 'node-card-metric-label node-card-section-label')
+        .attr('x', 14).attr('y', y)
+        .text('PREREQUISITES');
+      y += 12;
 
-  nodeElements.append('text')
-    .attr('class', 'node-card-metric-val node-card-prereq-val')
-    .attr('x', NODE_W - 14).attr('y', 101)
-    .attr('fill', d => prereqColor(d))
-    .text(d => prereqLabel(d));
+      prereqs.slice(0, MAX_SHOW).forEach(p => {
+        group.append('circle')
+          .attr('class', 'node-card-prereq-dot')
+          .attr('cx', 18).attr('cy', y - 3)
+          .attr('r', 3)
+          .attr('fill', p.enabled ? '#10b981' : '#ef4444');
+        group.append('text')
+          .attr('class', 'node-card-dep-name')
+          .attr('x', 26).attr('y', y)
+          .attr('fill', 'rgba(255,255,255,.55)')
+          .attr('font-size', '8px')
+          .attr('font-family', "'Inter', sans-serif")
+          .text(truncate(p.name, 24));
+        y += 13;
+      });
 
-  nodeElements.append('text')
-    .attr('class', 'node-card-metric-label')
-    .attr('x', 14).attr('y', 118)
-    .text('Dependents');
+      if (prereqs.length > MAX_SHOW) {
+        group.append('text')
+          .attr('class', 'node-card-dep-name')
+          .attr('x', 26).attr('y', y)
+          .attr('fill', 'rgba(255,255,255,.3)')
+          .attr('font-size', '7.5px')
+          .attr('font-family', "'Inter', sans-serif")
+          .text(`+${prereqs.length - MAX_SHOW} more`);
+        y += 13;
+      }
+      y += 4;
+    }
 
-  nodeElements.append('text')
-    .attr('class', 'node-card-metric-val node-card-deps-val')
-    .attr('x', NODE_W - 14).attr('y', 118)
-    .attr('fill', 'rgba(255,255,255,.45)')
-    .text(d => graphData.links.filter(l => (l.source.id || l.source) === d.id).length.toString());
+    if (deps.length) {
+      group.append('text')
+        .attr('class', 'node-card-metric-label node-card-section-label')
+        .attr('x', 14).attr('y', y)
+        .text('DEPENDENTS');
+      y += 12;
+
+      deps.slice(0, MAX_SHOW).forEach(dep => {
+        group.append('circle')
+          .attr('class', 'node-card-dep-dot')
+          .attr('cx', 18).attr('cy', y - 3)
+          .attr('r', 3)
+          .attr('fill', dep.enabled ? '#10b981' : '#64748b');
+        group.append('text')
+          .attr('class', 'node-card-dep-name')
+          .attr('x', 26).attr('y', y)
+          .attr('fill', 'rgba(255,255,255,.55)')
+          .attr('font-size', '8px')
+          .attr('font-family', "'Inter', sans-serif")
+          .text(truncate(dep.name, 24));
+        y += 13;
+      });
+
+      if (deps.length > MAX_SHOW) {
+        group.append('text')
+          .attr('class', 'node-card-dep-name')
+          .attr('x', 26).attr('y', y)
+          .attr('fill', 'rgba(255,255,255,.3)')
+          .attr('font-size', '7.5px')
+          .attr('font-family', "'Inter', sans-serif")
+          .text(`+${deps.length - MAX_SHOW} more`);
+      }
+    }
+
+    if (!prereqs.length && !deps.length) {
+      group.append('text')
+        .attr('class', 'node-card-metric-label')
+        .attr('x', 14).attr('y', 80)
+        .text('No dependencies');
+    }
+  });
 
   updateVisuals();
 }
@@ -1231,6 +1763,41 @@ function statusColor(d) {
   if (d.enabled && !d.effective) return '#f59e0b';
   if (!d.enabled && d.prerequisitesMet) return '#38bdf8';
   return '#64748b';
+}
+
+function statusFill(d) {
+  if (d.enabled && d.effective) return 'rgba(16,185,129,.06)';
+  if (d.enabled && !d.effective) return 'rgba(245,158,11,.06)';
+  if (!d.enabled && d.prerequisitesMet) return 'rgba(56,189,248,.05)';
+  return '#1a1d27';
+}
+
+function linkState(link) {
+  const src = graphData.nodes.find(n => n.id === (link.source.id || link.source));
+  const tgt = graphData.nodes.find(n => n.id === (link.target.id || link.target));
+  if (src && src.enabled) return 'met';
+  if (tgt && tgt.enabled) return 'broken';
+  return 'blocking';
+}
+
+function getPrereqNodes(d) {
+  return graphData.links
+    .filter(l => (l.target.id || l.target) === d.id)
+    .map(l => {
+      const src = graphData.nodes.find(n => n.id === (l.source.id || l.source));
+      return src ? { name: src.name, enabled: src.enabled } : null;
+    })
+    .filter(Boolean);
+}
+
+function getDependentNodes(d) {
+  return graphData.links
+    .filter(l => (l.source.id || l.source) === d.id)
+    .map(l => {
+      const tgt = graphData.nodes.find(n => n.id === (l.target.id || l.target));
+      return tgt ? { name: tgt.name, enabled: tgt.enabled } : null;
+    })
+    .filter(Boolean);
 }
 
 function prereqColor(d) {
@@ -1261,7 +1828,7 @@ function blockerLine(d) {
 }
 
 function assignPositions(width, height) {
-  const yScale = d3.scaleLinear().domain([0, 3]).range([height * 0.10, height * 0.90]);
+  const yScale = d3.scaleLinear().domain([0, 2]).range([height * 0.18, height * 0.82]);
   const layerNodes = {};
   graphData.nodes.forEach(n => {
     const layer = LAYERS[n.team]?.y ?? 2;
@@ -1271,7 +1838,7 @@ function assignPositions(width, height) {
 
   Object.entries(layerNodes).forEach(([layer, nodes]) => {
     const y = yScale(Number(layer));
-    const gap = 30;
+    const gap = nodes.length <= 2 ? 120 : 40;
     const totalW = nodes.length * (NODE_W + gap) - gap;
     const startX = (width - totalW) / 2 + NODE_W / 2;
     nodes.forEach((n, i) => {
@@ -1289,6 +1856,7 @@ function resetLayout() {
   linkElements.select('path')
     .transition().duration(500).ease(d3.easeCubicOut)
     .attr('d', d => computeLinkPath(d));
+  g.transition().duration(500).attr('transform', 'translate(0,0)');
 }
 
 function computeLinkPath(link) {
@@ -1296,84 +1864,97 @@ function computeLinkPath(link) {
   const target = graphData.nodes.find(n => n.id === (link.target.id || link.target));
   if (!source || !target) return '';
 
-  const sx = source.x, sy = source.y + NODE_H / 2;
-  const tx = target.x, ty = target.y - NODE_H / 2 - 10;
-  const midY = (sy + ty) / 2;
+  const dx = target.x - source.x;
+  const dy = target.y - source.y;
+  const absDx = Math.abs(dx);
+  const absDy = Math.abs(dy);
 
-  return `M${sx},${sy} C${sx},${midY} ${tx},${midY} ${tx},${ty}`;
+  const halfW = NODE_W / 2;
+  const halfH = NODE_H / 2;
+  const pad = 10;
+
+  let sx, sy, tx, ty, c1x, c1y, c2x, c2y;
+
+  if (absDy * NODE_W >= absDx * NODE_H) {
+    if (dy > 0) {
+      sx = source.x; sy = source.y + halfH;
+      tx = target.x; ty = target.y - halfH - pad;
+    } else {
+      sx = source.x; sy = source.y - halfH;
+      tx = target.x; ty = target.y + halfH + pad;
+    }
+    const midY = (sy + ty) / 2;
+    c1x = sx; c1y = midY;
+    c2x = tx; c2y = midY;
+  } else {
+    if (dx > 0) {
+      sx = source.x + halfW; sy = source.y;
+      tx = target.x - halfW - pad; ty = target.y;
+    } else {
+      sx = source.x - halfW; sy = source.y;
+      tx = target.x + halfW + pad; ty = target.y;
+    }
+    const midX = (sx + tx) / 2;
+    c1x = midX; c1y = sy;
+    c2x = midX; c2y = ty;
+  }
+
+  return `M${sx},${sy} C${c1x},${c1y} ${c2x},${c2y} ${tx},${ty}`;
 }
 
 function updateVisuals() {
   if (!nodeElements) return;
 
+  nodeElements
+    .transition().duration(400)
+    .style('opacity', d => nodeFilterOpacity(d));
+
   nodeElements.select('.node-card-bg')
     .transition().duration(400)
-    .attr('stroke', d => {
-      if (d.enabled && d.effective) return 'rgba(16,185,129,.4)';
-      if (d.enabled && !d.effective) return 'rgba(245,158,11,.4)';
-      if (!d.enabled && d.prerequisitesMet) return 'rgba(56,189,248,.35)';
-      return d.teamColor + '44';
-    })
-    .attr('stroke-width', d => {
-      if (d.enabled && d.effective) return 1.5;
-      if (!d.enabled && d.prerequisitesMet) return 1.5;
-      return 1;
-    })
+    .attr('fill', d => statusFill(d))
+    .attr('stroke', d => statusColor(d) + '88')
+    .attr('stroke-width', d => (d.enabled || d.prerequisitesMet) ? 2 : 1.5)
     .attr('opacity', d => d.enabled ? 1 : .65);
-
-  nodeElements.select('.node-card-accent')
-    .transition().duration(400)
-    .attr('fill', d => {
-      if (d.enabled && d.effective) return '#10b981';
-      if (d.enabled && !d.effective) return '#f59e0b';
-      if (!d.enabled && d.prerequisitesMet) return '#38bdf8';
-      return d.teamColor;
-    });
 
   nodeElements.select('.node-card-status-dot')
     .transition().duration(400)
     .attr('fill', d => statusColor(d));
 
-  nodeElements.select('.node-card-status-val')
-    .text(d => statusText(d))
-    .attr('fill', d => statusColor(d));
+  nodeElements.each(function(d) {
+    const group = d3.select(this);
 
-  nodeElements.select('.node-card-prereq-val')
-    .text(d => prereqLabel(d))
-    .attr('fill', d => prereqColor(d));
+    group.select('.node-card-metric-label[text-anchor="end"]')
+      .text(statusText(d))
+      .attr('fill', statusColor(d));
+
+    const prereqs = getPrereqNodes(d);
+    group.selectAll('.node-card-prereq-dot')
+      .each(function(_, i) {
+        if (i < prereqs.length) {
+          d3.select(this).transition().duration(400)
+            .attr('fill', prereqs[i].enabled ? '#10b981' : '#ef4444');
+        }
+      });
+
+    const deps = getDependentNodes(d);
+    group.selectAll('.node-card-dep-dot')
+      .each(function(_, i) {
+        if (i < deps.length) {
+          d3.select(this).transition().duration(400)
+            .attr('fill', deps[i].enabled ? '#10b981' : '#64748b');
+        }
+      });
+  });
 
   linkElements.select('.link')
-    .attr('class', d => `link ${d.met ? 'met' : 'unmet'}`)
-    .attr('marker-end', d => `url(#arrow-${d.met ? 'met' : 'unmet'})`);
+    .attr('class', d => `link ${linkState(d)}`)
+    .attr('marker-end', d => `url(#arrow-${linkState(d)})`);
+
+  linkElements
+    .transition().duration(400)
+    .style('opacity', d => linkFilterOpacity(d));
 }
 
-// ── Particle Animation ──────────────────────────────────────────────────
-
-function startParticles() {
-  particleElements.each(function(d) {
-    const el = d3.select(this);
-    if (!d.met) { el.classed('active', false); return; }
-    el.classed('active', true);
-
-    const pathEl = d3.select(this.parentNode).select('path').node();
-    if (!pathEl) return;
-    const len = pathEl.getTotalLength();
-
-    function run() {
-      if (!d.met) { el.classed('active', false); return; }
-      el.classed('active', true);
-      el.transition()
-        .duration(1500 + Math.random() * 1000)
-        .ease(d3.easeLinear)
-        .attrTween('transform', () => (t) => {
-          const p = pathEl.getPointAtLength(t * len);
-          return `translate(${p.x}, ${p.y})`;
-        })
-        .on('end', run);
-    }
-    run();
-  });
-}
 
 // ── Node Detail ─────────────────────────────────────────────────────────
 
@@ -1456,6 +2037,8 @@ function showDetail(nodeId) {
 }
 
 function highlightNode(nodeId) {
+  clearFocusClasses();
+
   nodeElements.select('.node-card-bg')
     .transition().duration(200)
     .attr('opacity', d => d.id === nodeId ? 1 : (d.enabled ? .5 : .25));
@@ -1504,8 +2087,6 @@ function hideTooltip() {
 
 // ── Rollout Narration Panel ─────────────────────────────────────────────
 
-let rolloutLogEntries = [];
-
 function openRolloutPanel() {
   document.getElementById('rolloutPanel').classList.add('open');
 }
@@ -1514,55 +2095,83 @@ function closeRolloutPanel() {
   document.getElementById('rolloutPanel').classList.remove('open');
 }
 
-function addLogEntry(type, text) {
-  rolloutLogEntries.push({ type, text });
+function buildInsightHtml(event) {
+  if (!event.ldInsight) return '';
+  return `<div class="rp-ld-insight"><strong>LaunchDarkly Insight</strong><br>${event.ldInsight}</div>`;
 }
 
-function buildLogHtml() {
-  return rolloutLogEntries.map(e =>
-    `<div class="rp-log-entry ${e.type}">
-      <span class="le-marker"></span>
-      <span class="le-label">${e.type}</span>
-      <span>${e.text}</span>
-    </div>`
-  ).join('');
+function stepTitle(step) {
+  if (step.type === 'narration') return step.title;
+  if (step.type === 'blocked') return step.name;
+  if (step.type === 'enable') return step.name;
+  if (step.type === 'cascade') return step.flags.map(f => f.name).join(', ');
+  return 'Step';
 }
 
-function scrollLogToBottom() {
-  const el = document.querySelector('.rp-log');
-  if (el) el.scrollTop = el.scrollHeight;
+function stepTypeBadge(type) {
+  const labels = { narration: 'Context', blocked: 'Blocked', enable: 'Enable', cascade: 'Cascade' };
+  return labels[type] || type;
+}
+
+function buildTimelineHtml(currentIdx) {
+  if (!scenarioSteps.length) return '';
+  return scenarioSteps.map((step, i) => {
+    const state = i < currentIdx ? 'past' : i === currentIdx ? 'current' : 'future';
+    const title = truncate(stepTitle(step), 32);
+    const type = step.type;
+    return `<div class="tl-step ${state}" data-step="${i}">
+      ${state === 'current' ? '<div class="tl-step-bg"></div>' : ''}
+      <div class="tl-dot type-${type}"></div>
+      <div class="tl-content">
+        <div class="tl-label">${title}</div>
+        <div class="tl-type-badge ${type}">${stepTypeBadge(type)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function scrollTimelineToCurrent() {
+  const container = document.querySelector('.rp-timeline-section');
+  const current = container?.querySelector('.tl-step.current');
+  if (current && container) {
+    current.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+}
+
+function panelShell(stepIdx, totalSteps, detailHtml) {
+  const pct = Math.round(((stepIdx + 1) / totalSteps) * 100);
+  return `<div class="rp-inner">
+    <div class="rp-header">
+      <h3>Walkthrough</h3>
+      <span class="rp-step-counter">${stepIdx + 1} / ${totalSteps}</span>
+    </div>
+    <div class="rp-progress"><div class="rp-progress-fill" style="width:${pct}%"></div></div>
+    <div class="rp-detail">
+      ${detailHtml}
+    </div>
+    <div class="rp-timeline-section">
+      <div class="rp-timeline-title">Steps</div>
+      <div class="rp-timeline">
+        ${buildTimelineHtml(stepIdx)}
+      </div>
+    </div>
+  </div>`;
 }
 
 function renderNarration(event, stepIdx, totalSteps) {
   const panel = document.getElementById('rolloutPanel');
-  const pct = Math.round(((stepIdx + 1) / totalSteps) * 100);
-  addLogEntry('narration', event.title);
-
-  panel.innerHTML = `
-    <div class="rp-header">
-      <h3>Orchestration Scenario</h3>
-      <span class="rp-step-counter">${stepIdx + 1} / ${totalSteps}</span>
-    </div>
-    <div class="rp-progress"><div class="rp-progress-fill" style="width:${pct}%"></div></div>
-    <div class="rp-body">
-      <div class="rp-event">
-        <div class="rp-event-badge narration">Context</div>
-        <div class="rp-event-title">${event.title}</div>
-        <div class="rp-event-message">${event.message}</div>
-      </div>
-      <div class="rp-log-container">
-        <div class="rp-log-title">Event Log</div>
-        <div class="rp-log">${buildLogHtml()}</div>
-      </div>
+  const detail = `
+    <div class="rp-event">
+      <div class="rp-event-badge narration">Context</div>
+      <div class="rp-event-title">${event.title}</div>
+      <div class="rp-event-message">${event.message}</div>
+      ${buildInsightHtml(event)}
     </div>`;
-  scrollLogToBottom();
+  panel.innerHTML = panelShell(stepIdx, totalSteps, detail);
+  scrollTimelineToCurrent();
 }
 
 function renderBlocked(event, stepIdx, totalSteps) {
-  const panel = document.getElementById('rolloutPanel');
-  const pct = Math.round(((stepIdx + 1) / totalSteps) * 100);
-  addLogEntry('blocked', `${event.name} -- gated`);
-
   const prereqChips = (event.prereqKeys || []).map(k => {
     const node = graphData.nodes.find(n => n.id === k);
     const met = node && node.enabled;
@@ -1574,66 +2183,44 @@ function renderBlocked(event, stepIdx, totalSteps) {
     ? `<div style="font-size:.72rem;color:var(--text-dim);margin-top:.4rem">${waitingCount} downstream flag${waitingCount > 1 ? 's' : ''} also waiting on these prerequisites.</div>`
     : '';
 
-  panel.innerHTML = `
-    <div class="rp-header">
-      <h3>Orchestration Scenario</h3>
-      <span class="rp-step-counter">${stepIdx + 1} / ${totalSteps}</span>
-    </div>
-    <div class="rp-progress"><div class="rp-progress-fill" style="width:${pct}%"></div></div>
-    <div class="rp-body">
-      <div class="rp-event">
-        <div class="rp-event-badge blocked">Blocked</div>
-        <div class="rp-event-title">${event.name}</div>
-        <div class="rp-event-team">Team: <span>${event.team}</span></div>
-        <div class="rp-event-message">${event.message}</div>
-        ${prereqChips ? `<div style="font-size:.7rem;color:var(--text-dim);margin-bottom:.3rem">Waiting on prerequisites:</div><div class="rp-prereq-list">${prereqChips}</div>` : ''}
-        ${waitingNote}
-      </div>
-      <div class="rp-log-container">
-        <div class="rp-log-title">Event Log</div>
-        <div class="rp-log">${buildLogHtml()}</div>
-      </div>
+  const detail = `
+    <div class="rp-event">
+      <div class="rp-event-badge blocked">Blocked</div>
+      <div class="rp-event-title">${event.name}</div>
+      <div class="rp-event-team">Team: <span>${event.team}</span></div>
+      <div class="rp-event-message">${event.message}</div>
+      ${prereqChips ? `<div style="font-size:.7rem;color:var(--text-dim);margin-bottom:.3rem">Waiting on prerequisites:</div><div class="rp-prereq-list">${prereqChips}</div>` : ''}
+      ${waitingNote}
+      ${buildInsightHtml(event)}
     </div>`;
-  scrollLogToBottom();
+
+  const panel = document.getElementById('rolloutPanel');
+  panel.innerHTML = panelShell(stepIdx, totalSteps, detail);
+  scrollTimelineToCurrent();
 }
 
 function renderEnable(event, stepIdx, totalSteps) {
-  const panel = document.getElementById('rolloutPanel');
-  const pct = Math.round(((stepIdx + 1) / totalSteps) * 100);
-  addLogEntry('enabled', event.name);
-
   const depsList = (event.dependents || []).length
     ? `<div style="font-size:.72rem;color:var(--text-dim);margin-top:.4rem">Contributes to unblocking: <span style="color:var(--text)">${event.dependents.map(d => d.name).join(', ')}</span></div>`
     : '';
 
-  panel.innerHTML = `
-    <div class="rp-header">
-      <h3>Orchestration Scenario</h3>
-      <span class="rp-step-counter">${stepIdx + 1} / ${totalSteps}</span>
-    </div>
-    <div class="rp-progress"><div class="rp-progress-fill" style="width:${pct}%"></div></div>
-    <div class="rp-body">
-      <div class="rp-event">
-        <div class="rp-event-badge enabled">Enabled</div>
-        <div class="rp-event-title">${event.name}</div>
-        <div class="rp-event-team">Team: <span>${event.team}</span></div>
-        <div class="rp-event-message">${event.message}</div>
-        ${depsList}
-      </div>
-      <div class="rp-log-container">
-        <div class="rp-log-title">Event Log</div>
-        <div class="rp-log">${buildLogHtml()}</div>
-      </div>
+  const detail = `
+    <div class="rp-event">
+      <div class="rp-event-badge enabled">Enabled</div>
+      <div class="rp-event-title">${event.name}</div>
+      <div class="rp-event-team">Team: <span>${event.team}</span></div>
+      <div class="rp-event-message">${event.message}</div>
+      ${depsList}
+      ${buildInsightHtml(event)}
     </div>`;
-  scrollLogToBottom();
+
+  const panel = document.getElementById('rolloutPanel');
+  panel.innerHTML = panelShell(stepIdx, totalSteps, detail);
+  scrollTimelineToCurrent();
 }
 
 function renderCascade(event, stepIdx, totalSteps) {
-  const panel = document.getElementById('rolloutPanel');
-  const pct = Math.round(((stepIdx + 1) / totalSteps) * 100);
   const names = event.flags.map(f => f.name);
-  addLogEntry('cascade', `${names.length} flags unlocked`);
-
   const cascadeItems = event.flags.map(f =>
     `<div class="rp-cascade-item">
       <span class="ci-dot"></span>
@@ -1642,61 +2229,123 @@ function renderCascade(event, stepIdx, totalSteps) {
     </div>`
   ).join('');
 
-  panel.innerHTML = `
-    <div class="rp-header">
-      <h3>Orchestration Scenario</h3>
-      <span class="rp-step-counter">${stepIdx + 1} / ${totalSteps}</span>
-    </div>
-    <div class="rp-progress"><div class="rp-progress-fill" style="width:${pct}%"></div></div>
-    <div class="rp-body">
-      <div class="rp-event">
-        <div class="rp-event-badge cascade">Gate Opened &mdash; ${names.length} Flags Unlock</div>
-        <div class="rp-event-message" style="margin-top:.5rem">${event.message}</div>
-        <div class="rp-cascade-list" style="margin-top:.5rem">${cascadeItems}</div>
-      </div>
-      <div class="rp-log-container">
-        <div class="rp-log-title">Event Log</div>
-        <div class="rp-log">${buildLogHtml()}</div>
-      </div>
+  const detail = `
+    <div class="rp-event">
+      <div class="rp-event-badge cascade">Gate Opened &mdash; ${names.length} Flags Unlock</div>
+      <div class="rp-event-message" style="margin-top:.5rem">${event.message}</div>
+      <div class="rp-cascade-list" style="margin-top:.5rem">${cascadeItems}</div>
+      ${buildInsightHtml(event)}
     </div>`;
-  scrollLogToBottom();
+
+  const panel = document.getElementById('rolloutPanel');
+  panel.innerHTML = panelShell(stepIdx, totalSteps, detail);
+  scrollTimelineToCurrent();
 }
 
 function renderComplete(totalSteps) {
+  const detail = `
+    <div class="rp-complete">
+      <h4>Release Complete — Checkout v2 is Live</h4>
+      <p>Two teams shipped 4 features, each at their own pace. PMs toggled flags on as teams finished. LaunchDarkly prerequisite flags ensured that no interconnected feature went live until every dependency was ready. No broken experiences. No coordination meetings. No incidents.</p>
+      <div class="rp-ld-insight" style="text-align:left;margin-top:1rem"><strong>Key Takeaway</strong><br>Prerequisite flags are safety nets, not blockers. Teams and PMs work at their own pace — pushing code and toggling flags whenever they\'re ready. LaunchDarkly holds interconnected features back until the full dependency chain is satisfied, then releases them automatically. The result: faster sprints, confident PMs, and zero risk of half-built features reaching users.</div>
+    </div>`;
+
   const panel = document.getElementById('rolloutPanel');
-  panel.innerHTML = `
+  const pct = 100;
+  panel.innerHTML = `<div class="rp-inner">
     <div class="rp-header">
-      <h3>Orchestration Scenario</h3>
+      <h3>Walkthrough</h3>
       <span class="rp-step-counter">${totalSteps} / ${totalSteps}</span>
     </div>
-    <div class="rp-progress"><div class="rp-progress-fill" style="width:100%"></div></div>
-    <div class="rp-body">
-      <div class="rp-complete">
-        <h4>Rollout Complete</h4>
-        <p>All 13 flags across 5 teams are active. Prerequisite gates ensured no feature shipped before its dependencies were ready — even as teams worked at different speeds.</p>
+    <div class="rp-progress"><div class="rp-progress-fill" style="width:${pct}%"></div></div>
+    <div class="rp-detail">
+      ${detail}
+    </div>
+    <div class="rp-timeline-section">
+      <div class="rp-timeline-title">Steps</div>
+      <div class="rp-timeline">
+        ${buildTimelineHtml(totalSteps)}
       </div>
-      <div class="rp-log-container">
-        <div class="rp-log-title">Event Log</div>
-        <div class="rp-log">${buildLogHtml()}</div>
-      </div>
-    </div>`;
-  scrollLogToBottom();
+    </div>
+  </div>`;
+  scrollTimelineToCurrent();
 }
 
 // ── Graph highlight helpers ─────────────────────────────────────────────
+
+function clearFocusClasses() {
+  nodeElements.classed('rollout-focus-enable', false)
+    .classed('rollout-focus-blocked', false)
+    .classed('rollout-focus-prereq', false)
+    .classed('rollout-focus-narration', false);
+}
 
 function highlightFlags(keys, dimOthers = true) {
   const keySet = new Set(keys);
   nodeElements.select('.node-card-bg')
     .transition().duration(300)
-    .attr('opacity', d => keySet.has(d.id) ? 1 : (dimOthers ? .2 : (d.enabled ? 1 : .65)));
+    .attr('opacity', d => keySet.has(d.id) ? 1 : (dimOthers ? .15 : (d.enabled ? 1 : .65)));
+
+  nodeElements.selectAll('.node-card-name, .node-card-desc, .node-card-team-name, .node-card-metric-label, .node-card-dep-name')
+    .transition().duration(300)
+    .attr('opacity', function() {
+      const d = d3.select(this.parentNode).datum();
+      return keySet.has(d.id) ? 1 : (dimOthers ? .15 : 1);
+    });
+
+  nodeElements.selectAll('.node-card-status-dot, .node-card-team-dot, .node-card-sep, .node-card-prereq-dot, .node-card-dep-dot')
+    .transition().duration(300)
+    .attr('opacity', function() {
+      const d = d3.select(this.parentNode).datum();
+      return keySet.has(d.id) ? 1 : (dimOthers ? .15 : 1);
+    });
+
   linkElements.select('.link')
     .transition().duration(300)
     .attr('opacity', d => {
       const src = d.source.id || d.source;
       const tgt = d.target.id || d.target;
-      return (keySet.has(src) || keySet.has(tgt)) ? .8 : .08;
+      return (keySet.has(src) || keySet.has(tgt)) ? .8 : .05;
     });
+}
+
+function focusNodes(keys, type) {
+  clearFocusClasses();
+  const cls = 'rollout-focus-' + type;
+  const keySet = new Set(keys);
+  nodeElements.each(function(d) {
+    d3.select(this).classed(cls, keySet.has(d.id));
+  });
+}
+
+function focusWithPrereqs(mainKeys, prereqKeys, mainType) {
+  clearFocusClasses();
+  const mainSet = new Set(mainKeys);
+  const prereqSet = new Set(prereqKeys);
+  nodeElements.each(function(d) {
+    d3.select(this)
+      .classed('rollout-focus-' + mainType, mainSet.has(d.id))
+      .classed('rollout-focus-prereq', !mainSet.has(d.id) && prereqSet.has(d.id));
+  });
+}
+
+function panToNodes(keys) {
+  if (!keys.length) return;
+  const targets = graphData.nodes.filter(n => keys.includes(n.id));
+  if (!targets.length) return;
+
+  const cx = targets.reduce((s, n) => s + n.x, 0) / targets.length;
+  const cy = targets.reduce((s, n) => s + n.y, 0) / targets.length;
+
+  const canvas = document.getElementById('graphCanvas');
+  const vw = canvas.clientWidth;
+  const vh = canvas.clientHeight;
+
+  const tx = vw / 2 - cx;
+  const ty = vh / 2 - cy;
+
+  g.transition().duration(600).ease(d3.easeCubicOut)
+    .attr('transform', `translate(${tx}, ${ty})`);
 }
 
 function flashNodes(keys) {
@@ -1704,20 +2353,39 @@ function flashNodes(keys) {
     const node = nodeElements.filter(d => d.id === k);
     node.select('.node-card-bg')
       .transition().duration(200)
-      .attr('stroke-width', 3)
-      .transition().duration(600)
-      .attr('stroke-width', d => (d.enabled && d.effective) ? 1.5 : 1);
+      .attr('stroke-width', 4)
+      .transition().duration(800)
+      .attr('stroke-width', 2.5);
   });
 }
 
 function restoreOpacity() {
+  clearFocusClasses();
+
+  nodeElements
+    .transition().duration(400)
+    .style('opacity', d => nodeFilterOpacity(d));
+
   nodeElements.select('.node-card-bg')
     .transition().duration(400)
     .attr('opacity', d => d.enabled ? 1 : .65);
+
+  nodeElements.selectAll('.node-card-name, .node-card-desc, .node-card-team-name, .node-card-metric-label, .node-card-dep-name')
+    .transition().duration(400)
+    .attr('opacity', 1);
+
+  nodeElements.selectAll('.node-card-status-dot, .node-card-team-dot, .node-card-sep, .node-card-prereq-dot, .node-card-dep-dot')
+    .transition().duration(400)
+    .attr('opacity', 1);
+
   linkElements.select('.link')
     .transition().duration(400)
     .attr('opacity', 1)
     .attr('stroke-width', 1.5);
+
+  linkElements
+    .transition().duration(400)
+    .style('opacity', d => linkFilterOpacity(d));
 }
 
 async function syncGraph() {
@@ -1742,24 +2410,31 @@ let scenarioSteps = [];
 let scenarioIdx = -1;
 let autoPlaying = false;
 let autoPlayTimer = null;
+let stepping = false; // prevents concurrent step execution
 
 function showTransportControls() {
   document.getElementById('defaultControls').style.display = 'none';
   document.getElementById('transportControls').style.display = '';
+  document.getElementById('flagControlsTab').classList.add('disabled');
+  if (document.getElementById('panelControls').classList.contains('active')) {
+    switchSidebarTab('info');
+  }
 }
 
 function hideTransportControls() {
   document.getElementById('defaultControls').style.display = '';
   document.getElementById('transportControls').style.display = 'none';
+  document.getElementById('flagControlsTab').classList.remove('disabled');
 }
 
 function updateTransportUI() {
   const total = scenarioSteps.length;
   const idx = scenarioIdx;
+  const atEnd = idx >= total - 1;
   document.getElementById('transportLabel').textContent =
-    idx >= total ? `Complete (${total} steps)` : `Step ${idx + 1} / ${total}`;
-  document.getElementById('prevBtn').disabled = idx <= 0;
-  document.getElementById('nextBtn').disabled = idx >= total;
+    atEnd && !stepping ? `Complete (${total} steps)` : `Step ${idx + 1} / ${total}`;
+  document.getElementById('prevBtn').disabled = idx <= 0 || stepping;
+  document.getElementById('nextBtn').disabled = atEnd || stepping;
 
   const pauseIcon = document.getElementById('pauseIcon');
   const playIcon = document.getElementById('playIcon');
@@ -1772,8 +2447,6 @@ function updateTransportUI() {
   }
 }
 
-// Execute one step's visual effects + flag changes. Animate controls
-// whether to run the transition animations or skip them (for replay).
 async function executeStep(idx, animate) {
   if (idx < 0 || idx >= scenarioSteps.length) return;
   const event = scenarioSteps[idx];
@@ -1781,22 +2454,20 @@ async function executeStep(idx, animate) {
 
   if (event.type === 'narration') {
     renderNarration(event, idx, total);
-    if (animate) restoreOpacity();
+    if (animate) {
+      restoreOpacity();
+      // Reset view to default position for narration
+      g.transition().duration(500).attr('transform', 'translate(0,0)');
+    }
 
   } else if (event.type === 'blocked') {
     renderBlocked(event, idx, total);
     if (animate) {
       const prereqKeys = event.prereqKeys || [];
-      highlightFlags([event.key, ...prereqKeys]);
-
-      const blockedNode = nodeElements.filter(d => d.id === event.key);
-      blockedNode.select('.node-card-bg')
-        .transition().duration(300)
-        .attr('stroke', 'rgba(239,68,68,.6)')
-        .attr('stroke-width', 2.5)
-        .transition().duration(600)
-        .attr('stroke', d => d.teamColor + '44')
-        .attr('stroke-width', 1);
+      const allKeys = [event.key, ...prereqKeys];
+      highlightFlags(allKeys);
+      focusWithPrereqs([event.key], prereqKeys, 'blocked');
+      panToNodes(allKeys);
     }
 
   } else if (event.type === 'enable') {
@@ -1804,25 +2475,28 @@ async function executeStep(idx, animate) {
     await syncGraph();
     renderEnable(event, idx, total);
     if (animate) {
-      highlightFlags([event.key]);
+      const prereqKeys = event.prereqKeys || [];
+      highlightFlags([event.key, ...prereqKeys]);
+      focusWithPrereqs([event.key], prereqKeys, 'enable');
       flashNodes([event.key]);
+      panToNodes([event.key]);
     }
 
   } else if (event.type === 'cascade') {
     const keys = event.flags.map(f => f.key);
-    await Promise.all(keys.map(k => enableFlag(k)));
+    for (const k of keys) { await enableFlag(k); }
     await syncGraph();
     renderCascade(event, idx, total);
     if (animate) {
       highlightFlags(keys);
+      focusNodes(keys, 'enable');
       flashNodes(keys);
+      panToNodes(keys);
     }
   }
 
   if (animate) {
-    // Let animation play, then restore
-    await new Promise(r => setTimeout(r, 500));
-    restoreOpacity();
+    await new Promise(r => setTimeout(r, 400));
     updateVisuals();
   }
 }
@@ -1830,8 +2504,10 @@ async function executeStep(idx, animate) {
 // Replay flag state from scratch up to (but not including) targetIdx,
 // then execute targetIdx with animations.
 async function jumpToStep(targetIdx) {
+  stepping = true;
+  updateTransportUI();
+
   await DataLayer.reset();
-  rolloutLogEntries = [];
 
   for (let i = 0; i < targetIdx; i++) {
     const ev = scenarioSteps[i];
@@ -1840,16 +2516,14 @@ async function jumpToStep(targetIdx) {
     } else if (ev.type === 'cascade') {
       for (const f of ev.flags) { await enableFlag(f.key); }
     }
-    if (ev.type === 'narration') addLogEntry('narration', ev.title);
-    else if (ev.type === 'blocked') addLogEntry('blocked', `${ev.name} -- gated`);
-    else if (ev.type === 'enable') addLogEntry('enabled', ev.name);
-    else if (ev.type === 'cascade') addLogEntry('cascade', `${ev.flags.length} flags unlocked`);
   }
 
   await syncGraph();
   scenarioIdx = targetIdx;
-  updateTransportUI();
   await executeStep(targetIdx, true);
+
+  stepping = false;
+  updateTransportUI();
 }
 
 function scheduleAutoAdvance() {
@@ -1871,9 +2545,9 @@ function scheduleAutoAdvance() {
   else if (event.type === 'cascade') delay = 1500;
 
   autoPlayTimer = setTimeout(async () => {
-    if (!autoPlaying) return;
+    if (!autoPlaying || stepping) return;
     await rolloutNext();
-    scheduleAutoAdvance();
+    if (autoPlaying) scheduleAutoAdvance();
   }, delay);
 }
 
@@ -1881,8 +2555,7 @@ function scheduleAutoAdvance() {
 
 async function vizReset() {
   rolloutStop();
-  await DataLayer.reset();
-  await refreshStates();
+  await showResetModal();
 }
 
 async function vizEnableAll() {
@@ -1892,9 +2565,8 @@ async function vizEnableAll() {
 }
 
 async function vizRollout() {
-  if (rolloutRunning) return;
+  if (rolloutRunning || stepping) return;
   rolloutRunning = true;
-  rolloutLogEntries = [];
   scenarioIdx = -1;
 
   scenarioSteps = await DataLayer.getScenario();
@@ -1905,31 +2577,38 @@ async function vizRollout() {
   openRolloutPanel();
 
   autoPlaying = true;
+  updateTransportUI();
   await rolloutNext();
-  scheduleAutoAdvance();
+  if (autoPlaying) scheduleAutoAdvance();
 }
 
 async function rolloutNext() {
-  if (scenarioIdx >= scenarioSteps.length - 1) {
-    renderComplete(scenarioSteps.length);
-    autoPlaying = false;
-    updateTransportUI();
+  if (stepping || scenarioIdx >= scenarioSteps.length - 1) {
+    if (scenarioIdx >= scenarioSteps.length - 1) {
+      autoPlaying = false;
+      renderComplete(scenarioSteps.length);
+      updateTransportUI();
+    }
     return;
   }
+
+  stepping = true;
   scenarioIdx++;
   updateTransportUI();
   await executeStep(scenarioIdx, true);
+  stepping = false;
+  updateTransportUI();
 }
 
 async function rolloutPrev() {
-  if (scenarioIdx <= 0) return;
-  // Pause auto-play when user manually navigates
+  if (stepping || scenarioIdx <= 0) return;
   autoPlaying = false;
   if (autoPlayTimer) clearTimeout(autoPlayTimer);
   await jumpToStep(scenarioIdx - 1);
 }
 
 function rolloutPlayPause() {
+  if (stepping) return;
   autoPlaying = !autoPlaying;
   updateTransportUI();
   if (autoPlaying) {
@@ -1942,6 +2621,7 @@ function rolloutPlayPause() {
 function rolloutStop() {
   autoPlaying = false;
   rolloutRunning = false;
+  stepping = false;
   scenarioSteps = [];
   scenarioIdx = -1;
   if (autoPlayTimer) clearTimeout(autoPlayTimer);
@@ -1949,6 +2629,56 @@ function rolloutStop() {
   closeRolloutPanel();
   restoreOpacity();
   updateVisuals();
+  g.transition().duration(400).attr('transform', 'translate(0,0)');
+}
+
+// ── Reset Confirmation Modal ─────────────────────────────────────────────
+
+function showResetModal() {
+  const modal = document.getElementById('resetModal');
+  const title = document.getElementById('resetModalTitle');
+  const msg = document.getElementById('resetModalMsg');
+  const actions = document.getElementById('resetModalActions');
+
+  title.textContent = 'Reset All Flags?';
+  msg.textContent = 'This will turn off all 5 flags and reset the demo to its initial state.';
+  actions.innerHTML = `
+    <button class="btn" onclick="closeResetModal()">Cancel</button>
+    <button class="btn danger" id="resetConfirmBtn" onclick="confirmReset()">Reset Flags</button>
+  `;
+  modal.classList.add('visible');
+}
+
+function closeResetModal() {
+  document.getElementById('resetModal').classList.remove('visible');
+}
+
+document.getElementById('resetModal').addEventListener('click', (e) => {
+  if (e.target.id === 'resetModal') closeResetModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('resetModal').classList.contains('visible')) {
+    closeResetModal();
+  }
+});
+
+async function confirmReset() {
+  const title = document.getElementById('resetModalTitle');
+  const msg = document.getElementById('resetModalMsg');
+  const actions = document.getElementById('resetModalActions');
+
+  title.textContent = 'Resetting Flags...';
+  msg.innerHTML = '<span class="modal-spinner"></span> Turning off all flags';
+  actions.innerHTML = '';
+
+  await DataLayer.reset();
+  await refreshStates();
+
+  title.innerHTML = '<span class="modal-check">✓</span> Flags Reset';
+  msg.textContent = 'All flags have been turned off successfully.';
+  actions.innerHTML = `<button class="btn primary" onclick="closeResetModal()">Done</button>`;
+
+  setTimeout(closeResetModal, 1800);
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────
@@ -1984,7 +2714,7 @@ window.addEventListener('resize', () => {
   nodeElements.attr('transform', d => `translate(${d.x - NODE_W/2}, ${d.y - NODE_H/2})`);
   linkElements.select('path').attr('d', d => computeLinkPath(d));
 
-  const yScaleR = d3.scaleLinear().domain([0, 3]).range([h * 0.10, h * 0.90]);
+  const yScaleR = d3.scaleLinear().domain([0, 2]).range([h * 0.18, h * 0.82]);
   const loR = NODE_H / 2 + 18;
   g.selectAll('.layer-label').each(function(d) {
     d3.select(this).attr('y', yScaleR(d.y) - loR);

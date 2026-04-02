@@ -701,69 +701,35 @@
         <div class="release-sub" id="releaseSub">Enable all prerequisite flags across teams to unlock the full release</div>
       </div>
 
-      <!-- Infrastructure -->
-      <div class="app-section full-width" id="section-infra">
+      <!-- Core API -->
+      <div class="app-section full-width" id="section-api">
         <div class="section-header">
-          <div class="section-icon" style="background: #6366f122; color: #6366f1">
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm14 1a1 1 0 11-2 0 1 1 0 012 0zM2 13a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2zm14 1a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
+          <div class="section-icon" style="background: #f59e0b22; color: #f59e0b">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
           </div>
           <div class="section-title">
-            <h3>Platform Infrastructure</h3>
+            <h3>Core API Services</h3>
             <p>Foundational services — no prerequisites</p>
           </div>
-          <span class="section-badge off" id="badge-infra">0 / 3</span>
+          <span class="section-badge off" id="badge-api">0 / 2</span>
         </div>
         <div class="section-body">
-          <div class="infra-grid">
-            <div class="infra-item" id="ui-infra-payment-gateway">
-              <div class="infra-label">Payment Gateway</div>
-              <div class="infra-status down">OFFLINE</div>
+          <div class="api-services">
+            <div class="api-svc" id="ui-api-payment-service-v2">
+              <div class="api-svc-name"><span class="api-svc-dot down"></span>Payment Service v2</div>
+              <div class="api-svc-endpoint">POST /api/v2/payments</div>
             </div>
-            <div class="infra-item" id="ui-infra-database-migration">
-              <div class="infra-label">Database v2</div>
-              <div class="infra-status down">OFFLINE</div>
-            </div>
-            <div class="infra-item" id="ui-infra-cdn-optimization">
-              <div class="infra-label">CDN Edge Cache</div>
-              <div class="infra-status down">OFFLINE</div>
+            <div class="api-svc" id="ui-api-order-management-v2">
+              <div class="api-svc-name"><span class="api-svc-dot down"></span>Order Management v2</div>
+              <div class="api-svc-endpoint">GET /api/v2/orders</div>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="app-sections">
+      <div class="app-sections" style="grid-template-columns: 1fr">
 
-        <!-- Core API -->
-        <div class="app-section" id="section-api">
-          <div class="section-header">
-            <div class="section-icon" style="background: #f59e0b22; color: #f59e0b">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-            </div>
-            <div class="section-title">
-              <h3>Core API Services</h3>
-              <p>Requires infrastructure</p>
-            </div>
-            <span class="section-badge off" id="badge-api">0 / 3</span>
-          </div>
-          <div class="section-body">
-            <div class="api-services" style="flex-direction: column">
-              <div class="api-svc" id="ui-api-payment-service-v2">
-                <div class="api-svc-name"><span class="api-svc-dot down"></span>Payment Service v2</div>
-                <div class="api-svc-endpoint">POST /api/v2/payments</div>
-              </div>
-              <div class="api-svc" id="ui-api-order-management-v2">
-                <div class="api-svc-name"><span class="api-svc-dot down"></span>Order Management v2</div>
-                <div class="api-svc-endpoint">GET /api/v2/orders</div>
-              </div>
-              <div class="api-svc" id="ui-api-inventory-realtime">
-                <div class="api-svc-name"><span class="api-svc-dot down"></span>Real-time Inventory</div>
-                <div class="api-svc-endpoint">WSS /api/v2/inventory</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Web Checkout -->
+        <!-- Web Experience Checkout -->
         <div class="app-section" id="section-web">
           <div class="section-header">
             <div class="section-icon" style="background: #10b98122; color: #10b981">
@@ -771,7 +737,7 @@
             </div>
             <div class="section-title">
               <h3>Web Checkout</h3>
-              <p>Requires API services</p>
+              <p>Requires Core API services</p>
             </div>
             <span class="section-badge off" id="badge-web">0 / 2</span>
           </div>
@@ -797,65 +763,6 @@
           </div>
         </div>
 
-        <!-- Mobile -->
-        <div class="app-section" id="section-mobile">
-          <div class="section-header">
-            <div class="section-icon" style="background: #ef444422; color: #ef4444">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7 2a2 2 0 00-2 2v12a2 2 0 002 2h6a2 2 0 002-2V4a2 2 0 00-2-2H7zm3 14a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
-            </div>
-            <div class="section-title">
-              <h3>Mobile Checkout</h3>
-              <p>Requires API services</p>
-            </div>
-            <span class="section-badge off" id="badge-mobile">0 / 2</span>
-          </div>
-          <div class="section-body" style="display:flex; justify-content:center">
-            <div class="mobile-frame">
-              <div class="mobile-screen">
-                <div class="mobile-bar">ShopApp</div>
-                <div class="mobile-content" id="mobileContent">
-                  <div class="mobile-row"></div>
-                  <div class="mobile-row short"></div>
-                  <div class="mobile-row"></div>
-                  <div class="mobile-row short"></div>
-                  <div class="apple-pay-btn inactive" id="ui-applepay">Pay</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Analytics -->
-        <div class="app-section" id="section-data">
-          <div class="section-header">
-            <div class="section-icon" style="background: #8b5cf622; color: #8b5cf6">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zm6-4a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zm6-3a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>
-            </div>
-            <div class="section-title">
-              <h3>Data & Analytics</h3>
-              <p>Requires API services</p>
-            </div>
-            <span class="section-badge off" id="badge-data">0 / 2</span>
-          </div>
-          <div class="section-body">
-            <div class="analytics-grid">
-              <div class="analytics-stat" id="ui-stat-conv">
-                <div class="analytics-stat-value dead" id="stat-conv-val">—</div>
-                <div class="analytics-stat-label">Conversion</div>
-              </div>
-              <div class="analytics-stat" id="ui-stat-rev">
-                <div class="analytics-stat-value dead" id="stat-rev-val">—</div>
-                <div class="analytics-stat-label">Revenue</div>
-              </div>
-              <div class="analytics-stat" id="ui-stat-inv">
-                <div class="analytics-stat-value dead" id="stat-inv-val">—</div>
-                <div class="analytics-stat-label">Inventory</div>
-              </div>
-            </div>
-            <div class="mini-chart" id="miniChart"></div>
-          </div>
-        </div>
-
       </div><!-- /app-sections -->
     </div><!-- /mock-app -->
   </div><!-- /demo-main -->
@@ -874,26 +781,15 @@
 
 <script>
 const TEAMS = {
-  infrastructure: { name: 'Platform Infrastructure', color: '#6366f1', abbr: 'INF' },
-  api:            { name: 'Core API',                color: '#f59e0b', abbr: 'API' },
-  web:            { name: 'Web Experience',          color: '#10b981', abbr: 'WEB' },
-  mobile:         { name: 'Mobile Engineering',      color: '#ef4444', abbr: 'MOB' },
-  data:           { name: 'Data & Analytics',        color: '#8b5cf6', abbr: 'DAT' },
+  api: { name: 'Core API',        color: '#f59e0b', abbr: 'API' },
+  web: { name: 'Web Experience',   color: '#10b981', abbr: 'WEB' },
 };
 
 const FLAG_TO_TEAM = {
-  'infra-payment-gateway': 'infrastructure',
-  'infra-database-migration': 'infrastructure',
-  'infra-cdn-optimization': 'infrastructure',
   'api-payment-service-v2': 'api',
   'api-order-management-v2': 'api',
-  'api-inventory-realtime': 'api',
   'web-checkout-redesign': 'web',
   'web-one-click-purchase': 'web',
-  'mobile-checkout-flow': 'mobile',
-  'mobile-apple-pay-v2': 'mobile',
-  'data-event-tracking-v2': 'data',
-  'data-realtime-dashboard': 'data',
   'release-checkout-v2': 'all',
 };
 
@@ -925,21 +821,8 @@ function isOn(key) {
 // ── Update mock UI based on flag state ────────────────────────────────
 
 function updateMockUI() {
-  // Infrastructure items
-  ['infra-payment-gateway', 'infra-database-migration', 'infra-cdn-optimization'].forEach(key => {
-    const el = document.getElementById('ui-' + key);
-    if (!el) return;
-    const on = isOn(key);
-    el.classList.toggle('active', on);
-    el.querySelector('.infra-status').textContent = on ? 'ONLINE' : 'OFFLINE';
-    el.querySelector('.infra-status').className = 'infra-status ' + (on ? 'up' : 'down');
-  });
-
-  const infraCount = ['infra-payment-gateway', 'infra-database-migration', 'infra-cdn-optimization'].filter(isOn).length;
-  updateBadge('badge-infra', infraCount, 3);
-
-  // API services
-  ['api-payment-service-v2', 'api-order-management-v2', 'api-inventory-realtime'].forEach(key => {
+  // Core API services
+  ['api-payment-service-v2', 'api-order-management-v2'].forEach(key => {
     const el = document.getElementById('ui-' + key);
     if (!el) return;
     const on = isOn(key);
@@ -947,12 +830,10 @@ function updateMockUI() {
     el.querySelector('.api-svc-dot').className = 'api-svc-dot ' + (on ? 'up' : 'down');
   });
 
-  const apiCount = ['api-payment-service-v2', 'api-order-management-v2', 'api-inventory-realtime'].filter(isOn).length;
-  updateBadge('badge-api', apiCount, 3);
+  const apiCount = ['api-payment-service-v2', 'api-order-management-v2'].filter(isOn).length;
+  updateBadge('badge-api', apiCount, 2);
 
   const apiReady = isOn('api-payment-service-v2') && isOn('api-order-management-v2');
-  document.getElementById('section-api').classList.toggle('disabled', infraCount === 0);
-  document.getElementById('section-api').classList.toggle('active', apiCount === 3);
 
   // Web checkout
   const checkoutOn = isOn('web-checkout-redesign');
@@ -970,79 +851,6 @@ function updateMockUI() {
 
   const webCount = [checkoutOn, oneclickOn].filter(Boolean).length;
   updateBadge('badge-web', webCount, 2);
-
-  // Mobile
-  const mobileOn = isOn('mobile-checkout-flow');
-  const applePayOn = isOn('mobile-apple-pay-v2');
-  document.getElementById('section-mobile').classList.toggle('disabled', !apiReady);
-  document.getElementById('section-mobile').classList.toggle('active', mobileOn);
-
-  const ap = document.getElementById('ui-applepay');
-  ap.className = 'apple-pay-btn ' + (applePayOn ? 'active' : 'inactive');
-  ap.textContent = applePayOn ? ' Pay' : 'Pay';
-
-  const mobileCount = [mobileOn, applePayOn].filter(Boolean).length;
-  updateBadge('badge-mobile', mobileCount, 2);
-
-  // Data & Analytics
-  const trackingOn = isOn('data-event-tracking-v2');
-  const dashboardOn = isOn('data-realtime-dashboard');
-  document.getElementById('section-data').classList.toggle('disabled', !apiReady);
-  document.getElementById('section-data').classList.toggle('active', trackingOn);
-
-  const convEl = document.getElementById('stat-conv-val');
-  const revEl = document.getElementById('stat-rev-val');
-  const invEl = document.getElementById('stat-inv-val');
-
-  if (dashboardOn) {
-    convEl.textContent = '4.2%';
-    convEl.className = 'analytics-stat-value live';
-    revEl.textContent = '$12.4k';
-    revEl.className = 'analytics-stat-value live';
-    invEl.textContent = '2,847';
-    invEl.className = 'analytics-stat-value live';
-    document.getElementById('ui-stat-conv').classList.add('active');
-    document.getElementById('ui-stat-rev').classList.add('active');
-    document.getElementById('ui-stat-inv').classList.add('active');
-  } else if (trackingOn) {
-    convEl.textContent = '—';
-    convEl.className = 'analytics-stat-value dead';
-    revEl.textContent = '—';
-    revEl.className = 'analytics-stat-value dead';
-    invEl.textContent = '—';
-    invEl.className = 'analytics-stat-value dead';
-    document.getElementById('ui-stat-conv').classList.remove('active');
-    document.getElementById('ui-stat-rev').classList.remove('active');
-    document.getElementById('ui-stat-inv').classList.remove('active');
-  } else {
-    convEl.textContent = '—';
-    convEl.className = 'analytics-stat-value dead';
-    revEl.textContent = '—';
-    revEl.className = 'analytics-stat-value dead';
-    invEl.textContent = '—';
-    invEl.className = 'analytics-stat-value dead';
-    ['ui-stat-conv', 'ui-stat-rev', 'ui-stat-inv'].forEach(id =>
-      document.getElementById(id).classList.remove('active'));
-  }
-
-  const dataCount = [trackingOn, dashboardOn].filter(Boolean).length;
-  updateBadge('badge-data', dataCount, 2);
-
-  // Mini chart bars
-  const chart = document.getElementById('miniChart');
-  if (!chart.children.length) {
-    for (let i = 0; i < 12; i++) {
-      const bar = document.createElement('div');
-      bar.className = 'mini-bar';
-      chart.appendChild(bar);
-    }
-  }
-  const bars = chart.children;
-  const heights = [30, 50, 40, 70, 55, 80, 60, 90, 45, 75, 65, 85];
-  for (let i = 0; i < bars.length; i++) {
-    bars[i].style.height = dashboardOn ? heights[i] + '%' : '8%';
-    bars[i].classList.toggle('active', dashboardOn);
-  }
 
   // Release banner
   const releaseOn = isOn('release-checkout-v2');
@@ -1090,7 +898,7 @@ function updateSidebar() {
   const container = document.getElementById('flagSidebarList');
   container.innerHTML = '';
 
-  const teamOrder = ['infrastructure', 'api', 'web', 'mobile', 'data'];
+  const teamOrder = ['api', 'web'];
 
   for (const teamKey of teamOrder) {
     const team = TEAMS[teamKey];

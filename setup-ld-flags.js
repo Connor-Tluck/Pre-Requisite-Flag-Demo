@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 //  LaunchDarkly Flag Setup Script
 //
-//  Creates all 13 feature flags for the Orchestration Demo in your
+//  Creates all 5 feature flags for the Orchestration Demo in your
 //  LaunchDarkly project, complete with names, descriptions, tags, and
 //  prerequisite relationships.
 //
@@ -40,46 +40,18 @@ if (!LD_API_KEY) {
 
 const FLAGS = [
   {
-    key: 'infra-payment-gateway',
-    name: 'Payment Gateway Provisioning',
-    team: 'infrastructure',
-    description: 'Provision and validate new Stripe/Adyen payment gateway endpoints',
-    prerequisites: [],
-  },
-  {
-    key: 'infra-database-migration',
-    name: 'Database Schema Migration',
-    team: 'infrastructure',
-    description: 'Run v2 schema migrations for orders, payments, and inventory tables',
-    prerequisites: [],
-  },
-  {
-    key: 'infra-cdn-optimization',
-    name: 'CDN Edge Caching',
-    team: 'infrastructure',
-    description: 'Deploy optimized CDN rules for new checkout assets and API responses',
-    prerequisites: [],
-  },
-  {
     key: 'api-payment-service-v2',
     name: 'Payment Service v2',
     team: 'api',
     description: 'New payment processing endpoints with multi-currency and 3DS2 support',
-    prerequisites: ['infra-payment-gateway', 'infra-database-migration'],
+    prerequisites: [],
   },
   {
     key: 'api-order-management-v2',
     name: 'Order Management v2',
     team: 'api',
     description: 'Redesigned order lifecycle API with real-time status webhooks',
-    prerequisites: ['infra-database-migration'],
-  },
-  {
-    key: 'api-inventory-realtime',
-    name: 'Real-time Inventory API',
-    team: 'api',
-    description: 'WebSocket-based inventory availability with sub-second updates',
-    prerequisites: ['infra-database-migration'],
+    prerequisites: [],
   },
   {
     key: 'web-checkout-redesign',
@@ -93,42 +65,14 @@ const FLAGS = [
     name: 'One-Click Purchase',
     team: 'web',
     description: 'Saved payment method one-click buy for returning customers',
-    prerequisites: ['web-checkout-redesign', 'api-payment-service-v2'],
-  },
-  {
-    key: 'mobile-checkout-flow',
-    name: 'Mobile Checkout Flow',
-    team: 'mobile',
-    description: 'Native mobile checkout with gesture navigation and haptic feedback',
-    prerequisites: ['api-payment-service-v2', 'api-order-management-v2'],
-  },
-  {
-    key: 'mobile-apple-pay-v2',
-    name: 'Apple Pay v2 Integration',
-    team: 'mobile',
-    description: 'Updated Apple Pay integration using new payment service with tokenization',
-    prerequisites: ['mobile-checkout-flow', 'api-payment-service-v2'],
-  },
-  {
-    key: 'data-event-tracking-v2',
-    name: 'Event Tracking v2',
-    team: 'data',
-    description: 'New checkout funnel event schema with enriched attribution data',
-    prerequisites: ['api-payment-service-v2', 'api-order-management-v2'],
-  },
-  {
-    key: 'data-realtime-dashboard',
-    name: 'Real-time Analytics Dashboard',
-    team: 'data',
-    description: 'Live revenue & conversion dashboard powered by streaming inventory data',
-    prerequisites: ['data-event-tracking-v2', 'api-inventory-realtime'],
+    prerequisites: ['web-checkout-redesign'],
   },
   {
     key: 'release-checkout-v2',
     name: 'Checkout v2 — Full Release',
     team: 'release-gate',
     description: 'Master gate: enables Unified Checkout 2.0 for all customers',
-    prerequisites: ['web-checkout-redesign', 'mobile-checkout-flow', 'data-event-tracking-v2'],
+    prerequisites: ['web-checkout-redesign', 'web-one-click-purchase'],
   },
 ];
 
@@ -171,12 +115,9 @@ async function createFlags() {
   const variationIdMap = {};
 
   const TEAM_TAGS = {
-    'infrastructure': 'team-platform-infrastructure',
-    'api':            'team-core-api',
-    'web':            'team-web-experience',
-    'mobile':         'team-mobile-engineering',
-    'data':           'team-data-analytics',
-    'release-gate':   'team-release-gate',
+    'api':          'team-core-api',
+    'web':          'team-web-experience',
+    'release-gate': 'team-release-gate',
   };
 
   for (const flag of FLAGS) {
@@ -315,12 +256,9 @@ async function main() {
        (or deploy to Vercel as a static site — no SDK key needed)
 
   Flag hierarchy:
-    Layer 0 (Infrastructure):  infra-payment-gateway, infra-database-migration, infra-cdn-optimization
-    Layer 1 (Core API):        api-payment-service-v2, api-order-management-v2, api-inventory-realtime
-    Layer 2 (Teams):           web-checkout-redesign, web-one-click-purchase,
-                               mobile-checkout-flow, mobile-apple-pay-v2,
-                               data-event-tracking-v2, data-realtime-dashboard
-    Layer 3 (Release Gate):    release-checkout-v2
+    Layer 0 (Core API):       api-payment-service-v2, api-order-management-v2
+    Layer 1 (Web Experience): web-checkout-redesign, web-one-click-purchase
+    Layer 2 (Release Gate):   release-checkout-v2
 `);
 }
 

@@ -63,6 +63,13 @@ const FLAG_DEFINITIONS = [
     prerequisites: ['web-checkout-redesign'],
   },
   {
+    key: 'web-recommended-styles',
+    name: 'Recommended Styles',
+    team: 'web',
+    description: 'Curated inspiration gallery showing styled outfits and product combinations',
+    prerequisites: [],
+  },
+  {
     key: 'release-checkout-v2',
     name: 'Checkout v2 — Full Release',
     team: 'all',
@@ -264,14 +271,33 @@ app.get('/api/teams', (_req, res) => {
   res.json(TEAMS);
 });
 
-app.get('/api/flags', async (_req, res) => {
+app.get('/api/ld-config', (_req, res) => {
+  res.json({ clientSideId: process.env.LD_CLIENT_SIDE_ID || '' });
+});
+
+app.get('/api/flags', async (req, res) => {
+  const userKey = req.query.userKey;
+  const context = userKey
+    ? { kind: 'user', key: userKey, ...(req.query.userName && { name: req.query.userName }),
+        ...(req.query.plan && { plan: req.query.plan }),
+        ...(req.query.country && { country: req.query.country }),
+        ...(req.query.beta && { beta: req.query.beta === 'true' }),
+        ...(req.query.role && { role: req.query.role }) }
+    : null;
+
   const flags = await Promise.all(
-    FLAG_DEFINITIONS.map(async (f) => ({
-      ...f,
-      enabled: await isEnabled(f.key),
-      effective: await isEffective(f.key),
-      prerequisitesMet: await arePrereqsMet(f.key),
-    }))
+    FLAG_DEFINITIONS.map(async (f) => {
+      if (context && ldLiveMode && ldClient) {
+        const eff = await ldClient.variation(f.key, context, false);
+        return { ...f, enabled: await isEnabled(f.key), effective: eff, prerequisitesMet: await arePrereqsMet(f.key) };
+      }
+      return {
+        ...f,
+        enabled: await isEnabled(f.key),
+        effective: await isEffective(f.key),
+        prerequisitesMet: await arePrereqsMet(f.key),
+      };
+    })
   );
   res.json(flags);
 });

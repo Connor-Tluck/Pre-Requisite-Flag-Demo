@@ -48,6 +48,13 @@
       prerequisites: ['web-checkout-redesign'],
     },
     {
+      key: 'web-recommended-styles',
+      name: 'Recommended Styles',
+      team: 'web',
+      description: 'Curated inspiration gallery showing styled outfits and product combinations',
+      prerequisites: [],
+    },
+    {
       key: 'release-checkout-v2',
       name: 'Checkout v2 — Full Release',
       team: 'all',

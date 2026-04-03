@@ -9,6 +9,9 @@
   <link rel="stylesheet" href="/styles.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23059669'/><text x='50' y='72' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='50' fill='white'>V+</text></svg>">
   <script src="/data.js"></script>
+  <script src="https://unpkg.com/launchdarkly-js-client-sdk@3.9.0/dist/ldclient.min.js"></script>
+  <script src="https://unpkg.com/@launchdarkly/observability@1.1.2/dist/index.umd.js"></script>
+  <script src="https://unpkg.com/@launchdarkly/session-replay@1.1.2/dist/index.umd.js"></script>
   <style>
     :root {
       --v-accent: #059669;
@@ -259,9 +262,7 @@
 
     /* ── Product Grid Section ──────────────────────────────────────── */
     .grid-section {
-      padding: 48px;
-      max-width: 1440px;
-      margin: 0 auto;
+      padding: 0;
     }
     .grid-header {
       display: flex;
@@ -1006,6 +1007,272 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
+    /* ── Recommended Styles Panel ──────────────────────────────────── */
+    .grid-with-sidebar {
+      display: flex;
+      gap: 32px;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 48px;
+    }
+    .styles-panel {
+      width: 300px;
+      flex-shrink: 0;
+      display: none;
+    }
+    .styles-panel.visible { display: block; }
+    .styles-panel-inner {
+      position: sticky;
+      top: 80px;
+    }
+    .sp-header {
+      margin-bottom: 20px;
+    }
+    .sp-eyebrow {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 3px;
+      color: var(--v-accent);
+      margin-bottom: 6px;
+    }
+    .sp-title {
+      font-family: 'Anton', sans-serif;
+      font-size: 22px;
+      color: var(--v-fg);
+    }
+    .sp-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .style-card {
+      border: 1px solid var(--v-border);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .style-card:hover {
+      border-color: var(--v-fg);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,.08);
+    }
+    .style-card-img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      display: block;
+    }
+    .style-card-body {
+      padding: 12px 14px;
+    }
+    .style-card-name {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--v-fg);
+      margin-bottom: 4px;
+    }
+    .style-card-desc {
+      font-size: 12px;
+      color: var(--v-fg-muted);
+      line-height: 1.4;
+      margin-bottom: 8px;
+    }
+    .style-card-products {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .style-card-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: .5px;
+      padding: 2px 7px;
+      border-radius: 3px;
+      background: var(--v-input-bg);
+      color: var(--v-fg-sec);
+      border: 1px solid var(--v-border);
+    }
+    .grid-area {
+      flex: 1;
+      min-width: 0;
+      border: 1px solid var(--v-border);
+      border-radius: 14px;
+      padding: 28px;
+      background: var(--v-bg);
+    }
+    .styles-panel.visible .styles-panel-inner {
+      border: 1px solid var(--v-border);
+      border-radius: 14px;
+      padding: 24px;
+      background: var(--v-bg);
+    }
+
+    /* ── User / Auth ───────────────────────────────────────────────── */
+    .user-area {
+      position: relative;
+    }
+    .user-btn {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,.25);
+      background: rgba(255,255,255,.1);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .2s;
+      overflow: hidden;
+      padding: 0;
+    }
+    .user-btn:hover { border-color: var(--v-accent); }
+    .user-btn svg { color: #fff; flex-shrink: 0; }
+    .user-btn img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+    .user-btn.signed-in { border-color: var(--v-accent); }
+    .user-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      width: 240px;
+      background: #fff;
+      border: 1px solid var(--v-border);
+      border-radius: 12px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.15);
+      z-index: 500;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-4px);
+      transition: all .2s;
+    }
+    .user-dropdown.open { opacity: 1; pointer-events: auto; transform: translateY(0); }
+    .user-dropdown-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--v-border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .user-dropdown-header img {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .user-dropdown-header .udh-anon {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: var(--v-input-bg);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .udh-info { min-width: 0; }
+    .udh-name { font-weight: 600; font-size: 14px; color: var(--v-fg); }
+    .udh-detail { font-size: 11px; color: var(--v-fg-muted); margin-top: 1px; }
+    .user-dropdown-item {
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--v-fg);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: background .15s;
+    }
+    .user-dropdown-item:hover { background: var(--v-input-bg); }
+    .user-dropdown-item svg { flex-shrink: 0; color: var(--v-fg-muted); }
+    .user-dropdown-item.signout { color: #dc2626; }
+    .user-dropdown-item.signout svg { color: #dc2626; }
+
+    /* Sign-in modal */
+    .signin-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.5);
+      backdrop-filter: blur(4px);
+      z-index: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s;
+    }
+    .signin-overlay.open { opacity: 1; pointer-events: auto; }
+    .signin-box {
+      background: #fff;
+      border-radius: 16px;
+      width: 420px;
+      max-width: 90vw;
+      box-shadow: 0 20px 60px rgba(0,0,0,.2);
+      transform: scale(.95);
+      transition: transform .25s;
+      overflow: hidden;
+    }
+    .signin-overlay.open .signin-box { transform: scale(1); }
+    .signin-header {
+      padding: 24px 24px 16px;
+      border-bottom: 1px solid var(--v-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .signin-header h3 {
+      font-family: 'Anton', sans-serif;
+      font-size: 22px;
+    }
+    .signin-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--v-fg-muted);
+      padding: 4px;
+    }
+    .signin-close:hover { color: var(--v-fg); }
+    .signin-profiles {
+      padding: 12px;
+    }
+    .profile-option {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .profile-option:hover { background: var(--v-input-bg); }
+    .profile-option img {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 2px solid var(--v-border);
+    }
+    .po-info { flex: 1; min-width: 0; }
+    .po-name { font-weight: 600; font-size: 15px; color: var(--v-fg); }
+    .po-role { font-size: 12px; color: var(--v-fg-muted); margin-top: 2px; }
+    .po-tags { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+    .po-tag {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .5px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid;
+    }
+    .po-tag.plan { background: rgba(99,102,241,.08); border-color: rgba(99,102,241,.25); color: #6366f1; }
+    .po-tag.geo { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.25); color: #d97706; }
+    .po-tag.beta { background: rgba(5,150,105,.08); border-color: rgba(5,150,105,.25); color: #059669; }
+    .po-arrow { color: var(--v-fg-muted); flex-shrink: 0; }
+
     /* ── Responsive ─────────────────────────────────────────────────── */
     @media (max-width: 1024px) {
       .product-grid { grid-template-columns: repeat(3, 1fr); }
@@ -1024,6 +1291,11 @@
       .hero-img { display: none; }
       .hero-plus-deco { display: none; }
       .grid-section, .cart-page, .checkout-page, .confirm-page { padding: 24px; }
+      .grid-with-sidebar { padding: 24px; flex-direction: column; }
+      .styles-panel { width: 100%; }
+      .styles-panel-inner { position: static; }
+      .sp-cards { flex-direction: row; overflow-x: auto; }
+      .style-card { min-width: 260px; }
     }
     @media (max-width: 500px) {
       .product-grid { grid-template-columns: 1fr; }
@@ -1055,6 +1327,7 @@
   <span class="ld-pill off" id="pill-api-order-management-v2"><span class="ld-pill-dot"></span>Order Mgmt v2</span>
   <span class="ld-pill off" id="pill-web-checkout-redesign"><span class="ld-pill-dot"></span>Checkout Redesign</span>
   <span class="ld-pill off" id="pill-web-one-click-purchase"><span class="ld-pill-dot"></span>One-Click</span>
+  <span class="ld-pill off" id="pill-web-recommended-styles"><span class="ld-pill-dot"></span>Rec. Styles</span>
   <span class="ld-pill off" id="pill-release-checkout-v2"><span class="ld-pill-dot"></span>Full Release</span>
 </div>
 
@@ -1082,6 +1355,12 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
         <span class="nav-cart-badge empty" id="cartBadge">0</span>
       </div>
+      <div class="user-area">
+        <button class="user-btn" id="userBtn1" onclick="toggleUserDropdown(event, 'userDrop1')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </button>
+        <div class="user-dropdown" id="userDrop1"></div>
+      </div>
     </div>
   </div>
 
@@ -1104,12 +1383,25 @@
   </div>
 
   <!-- Product Grid -->
-  <div class="grid-section">
-    <div class="grid-header">
-      <div class="grid-title">FEATURED PRODUCTS</div>
-      <a class="grid-view-all" href="javascript:void(0)">View All &rarr;</a>
+  <div class="grid-with-sidebar">
+    <aside class="styles-panel" id="stylesPanel">
+      <div class="styles-panel-inner">
+        <div class="sp-header">
+          <div class="sp-eyebrow">CURATED FOR YOU</div>
+          <div class="sp-title">Style Inspiration</div>
+        </div>
+        <div class="sp-cards" id="stylePanelCards"></div>
+      </div>
+    </aside>
+    <div class="grid-area">
+      <div class="grid-section">
+        <div class="grid-header">
+          <div class="grid-title">FEATURED PRODUCTS</div>
+          <a class="grid-view-all" href="javascript:void(0)">View All &rarr;</a>
+        </div>
+        <div class="product-grid" id="productGrid"></div>
+      </div>
     </div>
-    <div class="product-grid" id="productGrid"></div>
   </div>
 </div>
 
@@ -1133,6 +1425,12 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
         <span class="nav-cart-badge empty" id="cartBadge2">0</span>
       </div>
+      <div class="user-area">
+        <button class="user-btn" id="userBtn2" onclick="toggleUserDropdown(event, 'userDrop2')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </button>
+        <div class="user-dropdown" id="userDrop2"></div>
+      </div>
     </div>
   </div>
   <div class="cart-page">
@@ -1149,6 +1447,12 @@
     </div>
     <div class="store-nav-right">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+      <div class="user-area">
+        <button class="user-btn" id="userBtn3" onclick="toggleUserDropdown(event, 'userDrop3')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </button>
+        <div class="user-dropdown" id="userDrop3"></div>
+      </div>
     </div>
   </div>
   <div class="checkout-page" id="checkoutPageInner"></div>
@@ -1160,7 +1464,14 @@
     <div class="store-nav-left">
       <div class="store-brand"><span class="store-brand-name">VERDE</span><span class="store-brand-plus">+</span></div>
     </div>
-    <div class="store-nav-right"></div>
+    <div class="store-nav-right">
+      <div class="user-area">
+        <button class="user-btn" id="userBtn4" onclick="toggleUserDropdown(event, 'userDrop4')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </button>
+        <div class="user-dropdown" id="userDrop4"></div>
+      </div>
+    </div>
   </div>
   <div class="confirm-page">
     <div class="confirm-check">
@@ -1203,9 +1514,72 @@
   VERDE+ Demo Store &mdash; Powered by LaunchDarkly Feature Flags &middot; Simulated storefront
 </div>
 
+<!-- Sign-In Modal -->
+<div class="signin-overlay" id="signinOverlay" onclick="if(event.target===this)closeSigninModal()">
+  <div class="signin-box">
+    <div class="signin-header">
+      <h3>SIGN IN</h3>
+      <button class="signin-close" onclick="closeSigninModal()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="signin-profiles" id="signinProfiles"></div>
+  </div>
+</div>
+
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
+const USER_PROFILES = [
+  {
+    key: 'sarah-chen',
+    name: 'Sarah Chen',
+    email: 'sarah@verde.co',
+    role: 'Premium Member',
+    ldRole: 'premium-member',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80',
+    plan: 'premium',
+    country: 'US',
+    beta: false,
+    tags: [
+      { label: 'PREMIUM', cls: 'plan' },
+      { label: 'US', cls: 'geo' },
+    ],
+  },
+  {
+    key: 'marcus-johnson',
+    name: 'Marcus Johnson',
+    email: 'marcus@verde.co',
+    role: 'Standard Member',
+    ldRole: 'standard-member',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80',
+    plan: 'standard',
+    country: 'GB',
+    beta: false,
+    tags: [
+      { label: 'STANDARD', cls: 'plan' },
+      { label: 'UK', cls: 'geo' },
+    ],
+  },
+  {
+    key: 'aisha-patel',
+    name: 'Aisha Patel',
+    email: 'aisha@verde.co',
+    role: 'Beta Tester',
+    ldRole: 'beta-tester',
+    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&q=80',
+    plan: 'standard',
+    country: 'IN',
+    beta: true,
+    tags: [
+      { label: 'BETA', cls: 'beta' },
+      { label: 'IN', cls: 'geo' },
+    ],
+  },
+];
+
+let currentUser = null;
+
 const PRODUCTS = [
   { id: 'urban-runner', name: 'Urban Runner', price: 129, img: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&q=80', desc: 'Size: 10 / Color: Black' },
   { id: 'moto-jacket', name: 'Moto Jacket', price: 289, img: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=600&q=80', desc: 'Size: M / Color: Black' },
@@ -1215,6 +1589,27 @@ const PRODUCTS = [
   { id: 'studio-headphones', name: 'Studio Headphones', price: 249, img: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&q=80', desc: 'Active Noise Cancellation' },
   { id: 'canvas-lowtop', name: 'Canvas Low-Top', price: 79, img: 'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=600&q=80', desc: 'Size: 10 / Color: White' },
   { id: 'tech-backpack', name: 'Tech Backpack', price: 199, img: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600&q=80', desc: 'Water Resistant / 25L' },
+];
+
+const STYLE_LOOKS = [
+  {
+    name: 'Street Essential',
+    desc: 'Clean everyday look — sneakers, outerwear & accessories.',
+    img: 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=600&q=80',
+    products: ['Urban Runner', 'Moto Jacket', 'Aviator Shades'],
+  },
+  {
+    name: 'Weekend Explorer',
+    desc: 'Tech-forward gear for the urban adventurer.',
+    img: 'https://images.unsplash.com/photo-1617137968427-85924c800a22?w=600&q=80',
+    products: ['Tech Backpack', 'Canvas Low-Top', 'Chrono Watch'],
+  },
+  {
+    name: 'Night Out',
+    desc: 'Statement pieces that go from dinner to downtown.',
+    img: 'https://images.unsplash.com/photo-1507680434567-5739c80be1ac?w=600&q=80',
+    products: ['Moto Jacket', 'Chrono Watch', 'Crossbody Bag'],
+  },
 ];
 
 let cart = [];
@@ -1259,6 +1654,8 @@ function addToCart(id) {
   const existing = cart.find(c => c.id === id);
   if (existing) existing.qty++;
   else cart.push({ id, qty: 1 });
+  const p = PRODUCTS.find(pr => pr.id === id);
+  trackEvent('add-to-cart', { productId: id, productName: p?.name, price: p?.price });
   renderCartBadges();
   showToast('Added to cart');
 }
@@ -1363,6 +1760,8 @@ function showView(id) {
 // ── Checkout ─────────────────────────────────────────────────────────
 
 function goToCheckout() {
+  const total = cart.reduce((s, c) => { const p = PRODUCTS.find(pr => pr.id === c.id); return s + (p ? p.price * c.qty : 0); }, 0);
+  trackEvent('checkout-started', { itemCount: cart.length, total });
   currentStep = 0;
   renderCheckout();
   showView('viewCheckout');
@@ -1510,6 +1909,8 @@ function goStep(s) {
 
 function placeOrder() {
   const ordNum = 'VRD-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+  const total = cart.reduce((s, c) => { const p = PRODUCTS.find(pr => pr.id === c.id); return s + (p ? p.price * c.qty : 0); }, 0);
+  trackEvent('order-placed', { orderId: ordNum, itemCount: cart.length, total });
   document.getElementById('orderId').textContent = 'Order #' + ordNum;
   showView('viewConfirmation');
 
@@ -1569,6 +1970,8 @@ function closeOneClick() {
 }
 
 function confirmOneClick() {
+  const p = PRODUCTS.find(pr => pr.id === ocProductId);
+  trackEvent('one-click-purchase', { productId: ocProductId, productName: p?.name, price: p?.price });
   closeOneClick();
   cart = [{ id: ocProductId, qty: 1 }];
   renderCartBadges();
@@ -1588,10 +1991,144 @@ function updateShopUI() {
     pill.className = 'ld-pill ' + (f.effective ? 'on' : f.enabled ? 'blocked' : 'off');
   });
 
+  const stylesOn = isOn('web-recommended-styles');
+  const panel = document.getElementById('stylesPanel');
+  if (panel) {
+    panel.classList.toggle('visible', stylesOn);
+    if (stylesOn) renderStylesPanel();
+  }
+
   document.querySelectorAll('.currency-sel').forEach(el => el.classList.toggle('visible', paymentOn));
   document.getElementById('promoBanner').classList.toggle('visible', releaseOn);
   document.getElementById('productGrid')?.classList.toggle('show-badges', releaseOn);
   document.body.classList.toggle('oneclick-on', oneclickOn);
+}
+
+function renderStylesPanel() {
+  const container = document.getElementById('stylePanelCards');
+  if (!container || container.dataset.rendered) return;
+  container.dataset.rendered = '1';
+  container.innerHTML = STYLE_LOOKS.map(look => `
+    <div class="style-card">
+      <img class="style-card-img" src="${look.img}" alt="${look.name}">
+      <div class="style-card-body">
+        <div class="style-card-name">${look.name}</div>
+        <div class="style-card-desc">${look.desc}</div>
+        <div class="style-card-products">
+          ${look.products.map(p => `<span class="style-card-tag">${p}</span>`).join('')}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── User Auth ────────────────────────────────────────────────────────
+
+function toggleUserDropdown(e, dropId) {
+  e.stopPropagation();
+  const drop = document.getElementById(dropId);
+  const isOpen = drop.classList.contains('open');
+  closeAllDropdowns();
+  if (!isOpen) {
+    renderDropdown(dropId);
+    drop.classList.add('open');
+  }
+}
+
+function closeAllDropdowns() {
+  document.querySelectorAll('.user-dropdown').forEach(d => d.classList.remove('open'));
+}
+
+document.addEventListener('click', closeAllDropdowns);
+
+function renderDropdown(dropId) {
+  const drop = document.getElementById(dropId);
+  if (currentUser) {
+    drop.innerHTML = `
+      <div class="user-dropdown-header">
+        <img src="${currentUser.avatar}" alt="${currentUser.name}">
+        <div class="udh-info">
+          <div class="udh-name">${currentUser.name}</div>
+          <div class="udh-detail">${currentUser.email}</div>
+        </div>
+      </div>
+      <div class="user-dropdown-item" onclick="openSigninModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
+        Switch Account
+      </div>
+      <div class="user-dropdown-item signout" onclick="signOut()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sign Out
+      </div>`;
+  } else {
+    drop.innerHTML = `
+      <div class="user-dropdown-header">
+        <div class="udh-anon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div class="udh-info">
+          <div class="udh-name">Anonymous</div>
+          <div class="udh-detail">Default context</div>
+        </div>
+      </div>
+      <div class="user-dropdown-item" onclick="openSigninModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        Sign In
+      </div>`;
+  }
+}
+
+function updateAllUserButtons() {
+  document.querySelectorAll('.user-btn').forEach(btn => {
+    if (currentUser) {
+      btn.innerHTML = `<img src="${currentUser.avatar}" alt="${currentUser.name}">`;
+      btn.classList.add('signed-in');
+    } else {
+      btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+      btn.classList.remove('signed-in');
+    }
+  });
+}
+
+function openSigninModal() {
+  closeAllDropdowns();
+  const container = document.getElementById('signinProfiles');
+  container.innerHTML = USER_PROFILES.map(u => `
+    <div class="profile-option" onclick="signInAs('${u.key}')">
+      <img src="${u.avatar}" alt="${u.name}">
+      <div class="po-info">
+        <div class="po-name">${u.name}</div>
+        <div class="po-role">${u.role}</div>
+        <div class="po-tags">${u.tags.map(t => `<span class="po-tag ${t.cls}">${t.label}</span>`).join('')}</div>
+      </div>
+      <svg class="po-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+  `).join('');
+  document.getElementById('signinOverlay').classList.add('open');
+}
+
+function closeSigninModal() {
+  document.getElementById('signinOverlay').classList.remove('open');
+}
+
+function signInAs(key) {
+  currentUser = USER_PROFILES.find(u => u.key === key) || null;
+  closeSigninModal();
+  updateAllUserButtons();
+  identifyUser();
+  fetchFlags();
+  trackEvent('user-sign-in', { userKey: key });
+  showToast(`Signed in as ${currentUser.name}`);
+}
+
+function signOut() {
+  currentUser = null;
+  closeAllDropdowns();
+  updateAllUserButtons();
+  identifyUser();
+  fetchFlags();
+  trackEvent('user-sign-out');
+  showToast('Signed out — anonymous context');
 }
 
 // ── Toast ────────────────────────────────────────────────────────────
@@ -1608,8 +2145,80 @@ function showToast(msg) {
 // ── Init ─────────────────────────────────────────────────────────────
 
 async function fetchFlags() {
-  flags = await DataLayer.getFlags();
+  if (currentUser && DataLayer.useServer) {
+    const params = new URLSearchParams({
+      userKey: currentUser.key,
+      userName: currentUser.name,
+      plan: currentUser.plan,
+      country: currentUser.country,
+      beta: String(currentUser.beta),
+      role: currentUser.ldRole,
+    });
+    const res = await fetch('/api/flags?' + params.toString());
+    flags = await res.json();
+  } else {
+    flags = await DataLayer.getFlags();
+  }
   updateShopUI();
+}
+
+let ldClient = null;
+
+function getLdContext() {
+  if (currentUser) {
+    return {
+      kind: 'user',
+      key: currentUser.key,
+      name: currentUser.name,
+      email: currentUser.email,
+      plan: currentUser.plan,
+      country: currentUser.country,
+      beta: currentUser.beta,
+      role: currentUser.ldRole,
+    };
+  }
+  return { kind: 'user', key: 'anonymous', anonymous: true };
+}
+
+async function initLdClient() {
+  try {
+    const cfg = await fetch('/api/ld-config').then(r => r.json());
+    if (!cfg.clientSideId) return;
+
+    const ObsPlugin = window.Observability?.default || window.Observability?.Observability;
+    const SRPlugin  = window.SessionReplay?.default || window.SessionReplay?.SessionReplay;
+
+    const plugins = [];
+    if (ObsPlugin)  plugins.push(new ObsPlugin({
+      tracingOrigins: true,
+      networkRecording: { enabled: true, recordHeadersAndBody: true },
+    }));
+    if (SRPlugin)   plugins.push(new SRPlugin({ privacySetting: 'none' }));
+
+    ldClient = window.LDClient.initialize(cfg.clientSideId, getLdContext(), {
+      plugins,
+    });
+    await new Promise((resolve) => {
+      ldClient.on('ready', resolve);
+      setTimeout(resolve, 3000);
+    });
+    console.log('[LD] Client SDK initialized with observability' +
+      (SRPlugin ? ' + session replay' : ''));
+  } catch (e) {
+    console.warn('[LD] Client SDK init failed (non-fatal):', e.message);
+  }
+}
+
+function trackEvent(eventName, data) {
+  if (ldClient) {
+    try { ldClient.track(eventName, data); } catch {}
+  }
+}
+
+async function identifyUser() {
+  if (ldClient) {
+    try { await ldClient.identify(getLdContext()); } catch {}
+  }
 }
 
 (async () => {
@@ -1617,6 +2226,8 @@ async function fetchFlags() {
   renderProducts();
   renderCartBadges();
   await fetchFlags();
+  await initLdClient();
+  trackEvent('page-view', { page: 'shop' });
   setInterval(fetchFlags, 2000);
 })();
 </script>

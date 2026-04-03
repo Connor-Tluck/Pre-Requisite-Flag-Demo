@@ -1,0 +1,16 @@
+name: LaunchDarkly Code References
+on:
+  push:
+    branches: [main]
+
+jobs:
+  code-refs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 11
+      - uses: launchdarkly/find-code-references@v2
+        with:
+          accessToken: ${{ secrets.LD_ACCESS_TOKEN }}
+          projKey: CT-Job-Tracker-Demo

@@ -238,7 +238,10 @@ async function isEnabled(key) {
 }
 
 async function isEffective(key) {
-  if (ldLiveMode) return ldEvaluate(key);
+  if (ldLiveMode) {
+    if (!targetingState[key]) return false;
+    return ldPrereqsMet(key);
+  }
   return simEffective(key);
 }
 

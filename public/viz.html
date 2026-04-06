@@ -286,10 +286,78 @@
       gap: .6rem;
     }
 
-    .sidebar-controls .btn {
+    .viz-sidebar-actions {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+    }
+
+    .viz-sidebar-actions .btn {
       width: 100%;
       justify-content: center;
       font-size: .8rem;
+      padding: .65rem 1rem;
+      min-height: 2.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+
+    .viz-sidebar-actions .btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* One visual system: soft tint + semantic border + label color (no solid fill) */
+    .viz-sidebar-actions .btn.success {
+      background: rgba(16, 185, 129, .08);
+      border-color: rgba(52, 211, 153, .45);
+      color: #6ee7b7;
+    }
+
+    .viz-sidebar-actions .btn.success:hover {
+      background: rgba(16, 185, 129, .14);
+      border-color: rgba(16, 185, 129, .65);
+      color: #a7f3d0;
+    }
+
+    .viz-sidebar-actions .btn.primary {
+      background: rgba(99, 102, 241, .1);
+      border-color: rgba(129, 140, 248, .45);
+      color: #a5b4fc;
+    }
+
+    .viz-sidebar-actions .btn.primary:hover {
+      background: rgba(99, 102, 241, .17);
+      border-color: rgba(99, 102, 241, .65);
+      color: #c7d2fe;
+    }
+
+    .viz-sidebar-actions .btn.danger {
+      background: rgba(239, 68, 68, .08);
+      border-color: rgba(248, 113, 113, .4);
+      color: #fca5a5;
+    }
+
+    .viz-sidebar-actions .btn.danger:hover {
+      background: rgba(239, 68, 68, .14);
+      border-color: rgba(239, 68, 68, .55);
+      color: #fecaca;
+    }
+
+    /* Neutral fourth action — same chrome as other outline buttons */
+    .viz-sidebar-actions .btn.btn-neutral {
+      background: rgba(255, 255, 255, .04);
+      border-color: rgba(148, 163, 184, .25);
+      color: var(--text-dim);
+    }
+
+    .viz-sidebar-actions .btn.btn-neutral:hover {
+      background: rgba(255, 255, 255, .08);
+      border-color: rgba(148, 163, 184, .4);
+      color: var(--text);
     }
 
     .node-detail {
@@ -703,11 +771,89 @@
       min-width: 400px;
     }
 
-    .rp-inner {
+    .rp-stack {
       display: flex;
       flex-direction: column;
       height: 100%;
       min-width: 400px;
+      min-height: 0;
+    }
+
+    .rp-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    .rp-scroll > .rp-inner {
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+      min-width: 400px;
+      box-sizing: border-box;
+    }
+
+    .rp-transport-footer {
+      flex-shrink: 0;
+      border-top: 1px solid var(--border);
+      background: rgba(0, 0, 0, .15);
+      padding: 1rem 1.25rem;
+    }
+
+    .rp-transport-footer .transport-row {
+      margin-bottom: .5rem;
+    }
+
+    .rp-transport-footer .transport-label {
+      margin-bottom: .5rem;
+    }
+
+    .rp-transport-footer .btn.danger {
+      width: 100%;
+      justify-content: center;
+      font-size: .78rem;
+      padding: .55rem 1rem;
+    }
+
+    .rp-step-loading {
+      display: none;
+      align-items: flex-start;
+      gap: .65rem;
+      padding: .65rem .75rem;
+      margin-bottom: .75rem;
+      border-radius: 8px;
+      background: rgba(99, 102, 241, .08);
+      border: 1px solid rgba(99, 102, 241, .22);
+      font-size: .74rem;
+      color: var(--text-dim);
+      line-height: 1.45;
+    }
+
+    .rp-step-loading.visible {
+      display: flex;
+    }
+
+    .rp-step-loading-spinner {
+      width: 16px;
+      height: 16px;
+      margin-top: 2px;
+      border: 2px solid rgba(255, 255, 255, .12);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: rp-step-spin .65s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes rp-step-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .rp-step-loading strong {
+      display: block;
+      color: var(--text);
+      font-size: .76rem;
+      font-weight: 600;
+      margin-bottom: .2rem;
     }
 
     /* Top: header + progress */
@@ -1027,10 +1173,6 @@
     }
 
     /* ── Transport Controls ────────────────────────────────────────────── */
-    .transport-controls {
-      padding: 1rem 1.25rem !important;
-    }
-
     .transport-row {
       display: flex;
       justify-content: center;
@@ -1056,6 +1198,11 @@
 
     .transport-btn.play-pause:hover {
       background: #4f46e5;
+    }
+
+    .rp-transport-footer .btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
     }
 
     .transport-label {
@@ -1133,28 +1280,11 @@
         </div>
       </div>
 
-      <div class="sidebar-controls" id="defaultControls">
+      <div class="viz-sidebar-actions" id="defaultControls">
         <button class="btn success" id="rolloutBtn" onclick="vizRollout()">Animate Rollout</button>
         <button class="btn primary" onclick="vizEnableAll()">Enable All</button>
         <button class="btn danger" onclick="vizReset()">Reset Flags</button>
-        <button class="btn" style="background:rgba(255,255,255,.06);color:var(--text-dim)" onclick="resetLayout()">Reset Layout</button>
-      </div>
-
-      <div class="sidebar-controls transport-controls" id="transportControls" style="display:none">
-        <div class="transport-row">
-          <button class="btn transport-btn" id="prevBtn" onclick="rolloutPrev()" title="Previous step">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M10 2L4 7l6 5V2z" fill="currentColor"/><rect x="2" y="2" width="2" height="10" rx="0.5" fill="currentColor"/></svg>
-          </button>
-          <button class="btn transport-btn play-pause" id="playPauseBtn" onclick="rolloutPlayPause()" title="Play / Pause">
-            <svg id="pauseIcon" width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="3" y="2" width="3" height="10" rx="0.5" fill="currentColor"/><rect x="8" y="2" width="3" height="10" rx="0.5" fill="currentColor"/></svg>
-            <svg id="playIcon" width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:none"><path d="M3 1.5l9 5.5-9 5.5V1.5z" fill="currentColor"/></svg>
-          </button>
-          <button class="btn transport-btn" id="nextBtn" onclick="rolloutNext()" title="Next step">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M4 2l6 5-6 5V2z" fill="currentColor"/><rect x="10" y="2" width="2" height="10" rx="0.5" fill="currentColor"/></svg>
-          </button>
-        </div>
-        <div class="transport-label" id="transportLabel">Step 1 / 10</div>
-        <button class="btn danger" style="width:100%;justify-content:center;font-size:.78rem" onclick="rolloutStop()">Exit Walkthrough</button>
+        <button class="btn btn-neutral" onclick="resetLayout()">Reset Layout</button>
       </div>
 
       <div class="node-detail empty" id="nodeDetail">
@@ -1176,7 +1306,34 @@
     <div class="graph-canvas" id="graphCanvas">
       <div class="graph-tooltip" id="tooltip"></div>
     </div>
-    <div class="rollout-panel" id="rolloutPanel"></div>
+    <div class="rollout-panel" id="rolloutPanel">
+      <div class="rp-stack">
+        <div class="rp-scroll" id="rolloutPanelMain"></div>
+        <div class="rp-transport-footer" id="rolloutTransport" style="display:none" aria-hidden="true">
+          <div class="rp-step-loading" id="rolloutStepLoading" role="status" aria-live="polite" aria-atomic="true">
+            <span class="rp-step-loading-spinner" aria-hidden="true"></span>
+            <span>
+              <strong id="rolloutLoadingTitle">Updating…</strong>
+              <span id="rolloutLoadingText"></span>
+            </span>
+          </div>
+          <div class="transport-row">
+            <button class="btn transport-btn" id="prevBtn" onclick="rolloutPrev()" title="Previous step" type="button">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M10 2L4 7l6 5V2z" fill="currentColor"/><rect x="2" y="2" width="2" height="10" rx="0.5" fill="currentColor"/></svg>
+            </button>
+            <button class="btn transport-btn play-pause" id="playPauseBtn" onclick="rolloutPlayPause()" title="Play / Pause" type="button">
+              <svg id="pauseIcon" width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="3" y="2" width="3" height="10" rx="0.5" fill="currentColor"/><rect x="8" y="2" width="3" height="10" rx="0.5" fill="currentColor"/></svg>
+              <svg id="playIcon" width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:none"><path d="M3 1.5l9 5.5-9 5.5V1.5z" fill="currentColor"/></svg>
+            </button>
+            <button class="btn transport-btn" id="nextBtn" onclick="rolloutNext()" title="Next step" type="button">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M4 2l6 5-6 5V2z" fill="currentColor"/><rect x="10" y="2" width="2" height="10" rx="0.5" fill="currentColor"/></svg>
+            </button>
+          </div>
+          <div class="transport-label" id="transportLabel">Step 1 / 10</div>
+          <button class="btn danger" id="rolloutExitBtn" onclick="rolloutStop()" type="button">Exit Walkthrough</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1465,9 +1622,11 @@ function showToast(message, type = 'info') {
 
 async function ctrlToggleFlag(key, enabled) {
   const result = await DataLayer.toggle(key, enabled);
+  const node = graphData.nodes.find(n => n.id === key);
   if (!result.ok) {
-    const node = graphData.nodes.find(n => n.id === key);
     showToast(`Cannot enable ${node?.name || key}: prerequisites not met`, 'error');
+  } else if (DataLayer.mode === 'live') {
+    showToast(`${node?.name || key} ${enabled ? 'enabled' : 'disabled'} in LaunchDarkly`, 'info');
   }
   await refreshStates();
   buildFlagControls();
@@ -2000,15 +2159,25 @@ function showDetail(nodeId) {
        </div>`
     : '';
 
+  const canEnable = flag.prerequisitesMet;
+  const isDisabled = !canEnable && !flag.enabled;
+
   container.innerHTML = `
     <div class="detail-header">
       <div class="detail-dot" style="background: ${sColor}; box-shadow: 0 0 8px ${sColor}"></div>
       <h3>${flag.name}</h3>
     </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:.6rem 0">
+      <span style="font-size:.8rem;color:${sColor};font-weight:600">${sText}</span>
+      <label class="toggle" style="flex-shrink:0">
+        <input type="checkbox" ${flag.enabled ? 'checked' : ''} ${isDisabled ? 'disabled' : ''}
+               onchange="ctrlToggleFlag('${flag.id}', this.checked)">
+        <span class="slider"></span>
+      </label>
+    </div>
     <div class="detail-meta">
       <strong>Key:</strong> <code style="color:var(--accent)">${flag.id}</code><br>
       <strong>Team:</strong> ${teamName}<br>
-      <strong>Status:</strong> <span style="color:${sColor}">${sText}</span><br>
       <strong>Description:</strong> ${flag.description}
     </div>
     ${blockerHtml}
@@ -2160,7 +2329,7 @@ function panelShell(stepIdx, totalSteps, detailHtml) {
 }
 
 function renderNarration(event, stepIdx, totalSteps) {
-  const panel = document.getElementById('rolloutPanel');
+  const panel = document.getElementById('rolloutPanelMain');
   const detail = `
     <div class="rp-event">
       <div class="rp-event-badge narration">Context</div>
@@ -2195,7 +2364,7 @@ function renderBlocked(event, stepIdx, totalSteps) {
       ${buildInsightHtml(event)}
     </div>`;
 
-  const panel = document.getElementById('rolloutPanel');
+  const panel = document.getElementById('rolloutPanelMain');
   panel.innerHTML = panelShell(stepIdx, totalSteps, detail);
   scrollTimelineToCurrent();
 }
@@ -2215,7 +2384,7 @@ function renderEnable(event, stepIdx, totalSteps) {
       ${buildInsightHtml(event)}
     </div>`;
 
-  const panel = document.getElementById('rolloutPanel');
+  const panel = document.getElementById('rolloutPanelMain');
   panel.innerHTML = panelShell(stepIdx, totalSteps, detail);
   scrollTimelineToCurrent();
 }
@@ -2238,7 +2407,7 @@ function renderCascade(event, stepIdx, totalSteps) {
       ${buildInsightHtml(event)}
     </div>`;
 
-  const panel = document.getElementById('rolloutPanel');
+  const panel = document.getElementById('rolloutPanelMain');
   panel.innerHTML = panelShell(stepIdx, totalSteps, detail);
   scrollTimelineToCurrent();
 }
@@ -2251,7 +2420,7 @@ function renderComplete(totalSteps) {
       <div class="rp-ld-insight" style="text-align:left;margin-top:1rem"><strong>Key Takeaway</strong><br>Prerequisite flags are safety nets, not blockers. Teams and PMs work at their own pace — pushing code and toggling flags whenever they\'re ready. LaunchDarkly holds interconnected features back until the full dependency chain is satisfied, then releases them automatically. The result: faster sprints, confident PMs, and zero risk of half-built features reaching users.</div>
     </div>`;
 
-  const panel = document.getElementById('rolloutPanel');
+  const panel = document.getElementById('rolloutPanelMain');
   const pct = 100;
   panel.innerHTML = `<div class="rp-inner">
     <div class="rp-header">
@@ -2412,10 +2581,50 @@ let scenarioIdx = -1;
 let autoPlaying = false;
 let autoPlayTimer = null;
 let stepping = false; // prevents concurrent step execution
+/** @type {'jump' | 'step'} */
+let steppingKind = 'step';
+
+function rolloutForwardStepCopy() {
+  const ev = scenarioSteps[scenarioIdx];
+  if (!ev) {
+    return {
+      title: 'Applying step…',
+      text: 'Updating the graph.',
+    };
+  }
+  if (ev.type === 'narration') {
+    return {
+      title: 'Loading step…',
+      text: 'Updating the walkthrough view.',
+    };
+  }
+  if (ev.type === 'blocked') {
+    return {
+      title: 'Loading step…',
+      text: 'Highlighting prerequisites on the graph.',
+    };
+  }
+  if (ev.type === 'enable') {
+    return {
+      title: 'Toggling flag…',
+      text: 'Calling LaunchDarkly and refreshing the dependency graph.',
+    };
+  }
+  if (ev.type === 'cascade') {
+    return {
+      title: 'Toggling flags…',
+      text: 'Enabling multiple flags and syncing state. This may take a moment.',
+    };
+  }
+  return { title: 'Working…', text: '' };
+}
 
 function showTransportControls() {
-  document.getElementById('defaultControls').style.display = 'none';
-  document.getElementById('transportControls').style.display = '';
+  const t = document.getElementById('rolloutTransport');
+  t.style.display = '';
+  t.setAttribute('aria-hidden', 'false');
+  const rolloutBtn = document.getElementById('rolloutBtn');
+  if (rolloutBtn) rolloutBtn.disabled = true;
   document.getElementById('flagControlsTab').classList.add('disabled');
   if (document.getElementById('panelControls').classList.contains('active')) {
     switchSidebarTab('info');
@@ -2423,8 +2632,11 @@ function showTransportControls() {
 }
 
 function hideTransportControls() {
-  document.getElementById('defaultControls').style.display = '';
-  document.getElementById('transportControls').style.display = 'none';
+  const t = document.getElementById('rolloutTransport');
+  t.style.display = 'none';
+  t.setAttribute('aria-hidden', 'true');
+  const rolloutBtn = document.getElementById('rolloutBtn');
+  if (rolloutBtn) rolloutBtn.disabled = false;
   document.getElementById('flagControlsTab').classList.remove('disabled');
 }
 
@@ -2436,6 +2648,31 @@ function updateTransportUI() {
     atEnd && !stepping ? `Complete (${total} steps)` : `Step ${idx + 1} / ${total}`;
   document.getElementById('prevBtn').disabled = idx <= 0 || stepping;
   document.getElementById('nextBtn').disabled = atEnd || stepping;
+
+  const playBtn = document.getElementById('playPauseBtn');
+  const exitBtn = document.getElementById('rolloutExitBtn');
+  if (playBtn) playBtn.disabled = stepping;
+  if (exitBtn) exitBtn.disabled = stepping;
+
+  const loadingEl = document.getElementById('rolloutStepLoading');
+  const titleEl = document.getElementById('rolloutLoadingTitle');
+  const textEl = document.getElementById('rolloutLoadingText');
+  if (loadingEl && titleEl && textEl) {
+    if (stepping) {
+      loadingEl.classList.add('visible');
+      if (steppingKind === 'jump') {
+        titleEl.textContent = 'Replaying scenario…';
+        textEl.textContent =
+          'Resetting demo flags and re-applying each step to reach this point. This can take several seconds when going backward.';
+      } else {
+        const copy = rolloutForwardStepCopy();
+        titleEl.textContent = copy.title;
+        textEl.textContent = copy.text;
+      }
+    } else {
+      loadingEl.classList.remove('visible');
+    }
+  }
 
   const pauseIcon = document.getElementById('pauseIcon');
   const playIcon = document.getElementById('playIcon');
@@ -2506,6 +2743,7 @@ async function executeStep(idx, animate) {
 // then execute targetIdx with animations.
 async function jumpToStep(targetIdx) {
   stepping = true;
+  steppingKind = 'jump';
   updateTransportUI();
 
   await DataLayer.reset();
@@ -2524,6 +2762,7 @@ async function jumpToStep(targetIdx) {
   await executeStep(targetIdx, true);
 
   stepping = false;
+  steppingKind = 'step';
   updateTransportUI();
 }
 
@@ -2594,6 +2833,7 @@ async function rolloutNext() {
   }
 
   stepping = true;
+  steppingKind = 'step';
   scenarioIdx++;
   updateTransportUI();
   await executeStep(scenarioIdx, true);
@@ -2623,9 +2863,12 @@ function rolloutStop() {
   autoPlaying = false;
   rolloutRunning = false;
   stepping = false;
+  steppingKind = 'step';
   scenarioSteps = [];
   scenarioIdx = -1;
   if (autoPlayTimer) clearTimeout(autoPlayTimer);
+  const main = document.getElementById('rolloutPanelMain');
+  if (main) main.innerHTML = '';
   hideTransportControls();
   closeRolloutPanel();
   restoreOpacity();

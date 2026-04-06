@@ -400,7 +400,35 @@
       display: none;
     }
     .btn-buy-now:hover { background: var(--v-accent-hover); }
-    .oneclick-on .btn-buy-now { display: flex; align-items: center; justify-content: center; }
+    .oneclick-on .btn-buy-now {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      grid-column: 1 / -1;
+      grid-row: 2;
+    }
+    /* Second row for BUY NOW so three controls are not squeezed in one line */
+    .oneclick-on .p-card-actions {
+      display: grid;
+      grid-template-columns: 1fr 44px;
+      grid-template-rows: auto auto;
+      gap: 10px 8px;
+      align-items: stretch;
+      margin-top: 12px;
+    }
+    .oneclick-on .btn-add {
+      grid-column: 1;
+      grid-row: 1;
+      min-width: 0;
+    }
+    .oneclick-on .btn-wish {
+      grid-column: 2;
+      grid-row: 1;
+    }
+    .oneclick-on .p-card-body {
+      gap: 6px;
+      padding-bottom: 4px;
+    }
 
     /* ── Cart Page View ────────────────────────────────────────────── */
     .cart-page {

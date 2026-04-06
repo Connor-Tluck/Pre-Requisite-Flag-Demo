@@ -19,6 +19,27 @@ Without guardrails, these cross-team dependencies become coordination nightmares
 
 This demo makes that abstract concept **tangible and visual** — customers can watch flags light up in dependency order, see what happens when an upstream flag is disabled, and interact with a real application whose UI changes in real time based on flag state.
 
+### Why the LaunchDarkly UI alone is a weak demo
+
+Prerequisite flags matter for safe, coordinated releases, but they are **hard to show convincingly if you stay inside the LaunchDarkly UI.** The flag details view explains *that* prerequisites exist and how they are wired, but it rarely carries the **release-orchestration story**: how teams can work **independently** while the platform still enforces order, what happens **downstream** when an upstream flag changes, and how those flags behave **together** across services and the product. Relying only on the UI can miss the real impact of a prerequisite-based rollout and undersell how LaunchDarkly helps teams ship without constant manual coordination. The sections below — dependency graph, guided rollout, and live storefront — are there so Solutions Engineers can tell that full story, not just walk through settings.
+
+![Prerequisite flags in the LaunchDarkly UI](UI/UI_Updates/readme_images/Pre-Req%20Flag%20Launchdarkly%20UI.png)
+
+*Example: prerequisite configuration for a single flag in the LaunchDarkly dashboard — accurate, but not the full orchestration narrative on its own.*
+
+### How this demo tells the story (read in order)
+
+Use [What You Can Show Customers](#what-you-can-show-customers) (**sections 1–3** below) as the live walkthrough; the bullets here summarize the narrative arc.
+
+**1. Dependency graph — the orchestration story (`/viz.html`)**  
+The interactive **flow-chart** view (**section 1** below) shows the whole release as a graph: every flag, team ownership, prerequisite edges, and **live** link status (green / orange / red). That is where you narrate **order**, **blocking**, and **downstream impact** in one place—what a one-flag-at-a-time LaunchDarkly screen cannot surface.
+
+**2. Guided rollout — the sequence (`/viz.html` → Animate Rollout)**  
+**Section 2** walks the enable order step by step so the audience sees prerequisite enforcement in motion (what must flip first, what stays blocked, and when the release gate can open).
+
+**3. Client-side impact — proof the release landed (`/shop.html`)**  
+The **VERDE+ storefront** (**section 3** below) is the end-user lens. Before orchestration is complete, the app reflects the **pre-release** experience; after the chain is fully effective—including the master release gate—the **post-orchestration** UI shows the new checkout, one-click purchase, promos, and other gated surfaces. That visual before/after is how you show that release orchestration **succeeded**, not only that flags were toggled. Still images under [UI screenshots](#ui-screenshots): original vs updated client UI.
+
 ---
 
 ## The Scenario: Unified Checkout 2.0
@@ -152,6 +173,7 @@ Reference images for the visualization and storefront live in [`UI/UI_Updates/re
 
 | What | Image (link) |
 |------|----------------|
+| Prerequisite flag in LaunchDarkly UI (single-flag view) | [Pre-Req Flag LaunchDarkly UI](UI/UI_Updates/readme_images/Pre-Req%20Flag%20Launchdarkly%20UI.png) |
 | Prerequisite flag dependency graph (`/viz.html`) | [Pre-req flag viz view](UI/UI_Updates/readme_images/Pre-req_flag%20viz%20view.png) |
 | Demo app (shop) — before release | [Demo app — original client UI](UI/UI_Updates/readme_images/Demo%20App%20Client%20Side%20-%20Original%20Version.png) |
 | Demo app (shop) — after release | [Demo app — updated client UI](UI/UI_Updates/readme_images/Demo%20App%20Client%20Side%20-%20Updated%20Version.png) |

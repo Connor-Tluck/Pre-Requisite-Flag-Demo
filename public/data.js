@@ -338,12 +338,10 @@
           const info = await res.json();
           _useServer = true;
           _serverMode = info.mode || 'simulation';
-          console.log(`[DataLayer] Server detected — mode: ${_serverMode}`);
           return;
         }
       } catch { /* server not reachable */ }
       _useServer = false;
-      console.log('[DataLayer] No server — using client-side AppStore');
     },
 
     async getTeams()       { return (_useServer ? ServerAPI : ClientAPI).getTeams(); },

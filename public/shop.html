@@ -1341,10 +1341,7 @@
     <span>LD Orchestration</span>
   </div>
   <div class="nav-links">
-    <a href="/">Dashboard</a>
     <a href="/viz.html">Dependency Graph</a>
-    <a href="/demo.html">Demo App</a>
-    <a href="/shop.html" class="active">Shop</a>
   </div>
 </nav>
 
@@ -2230,10 +2227,7 @@ async function initLdClient() {
       ldClient.on('ready', resolve);
       setTimeout(resolve, 3000);
     });
-    console.log('[LD] Client SDK initialized with observability' +
-      (SRPlugin ? ' + session replay' : ''));
-  } catch (e) {
-    console.warn('[LD] Client SDK init failed (non-fatal):', e.message);
+  } catch {
   }
 }
 

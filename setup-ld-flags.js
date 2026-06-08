@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 //  LaunchDarkly Flag Setup Script
 //
-//  Creates all 5 feature flags for the Orchestration Demo in your
+//  Creates all 6 feature flags for the Orchestration Demo in your
 //  LaunchDarkly project, complete with names, descriptions, tags, and
 //  prerequisite relationships.
 //
@@ -264,7 +264,7 @@ async function main() {
 
   Flag hierarchy:
     Layer 0 (Core API):       api-payment-service-v2, api-order-management-v2
-    Layer 1 (Web Experience): web-checkout-redesign, web-one-click-purchase
+    Layer 1 (Web Experience): web-checkout-redesign, web-one-click-purchase, web-recommended-styles
     Layer 2 (Release Gate):   release-checkout-v2
 `);
 }

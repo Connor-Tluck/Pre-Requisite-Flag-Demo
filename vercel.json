@@ -1,4 +1,7 @@
 {
   "buildCommand": null,
-  "outputDirectory": "public"
+  "outputDirectory": "public",
+  "redirects": [
+    { "source": "/", "destination": "/viz.html", "permanent": false }
+  ]
 }

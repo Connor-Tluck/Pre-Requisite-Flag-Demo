@@ -12,6 +12,8 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.get('/', (_req, res) => { res.redirect('/viz.html'); });
+
 const PORT = process.env.PORT || 3000;
 
 // ---------------------------------------------------------------------------
@@ -530,8 +532,6 @@ await initLaunchDarkly();
 app.listen(PORT, () => {
   const mode = ldLiveMode ? 'LIVE (synced with LaunchDarkly)' : 'SIMULATION (in-memory)';
   console.log(`\nOrchestration Demo running at http://localhost:${PORT}`);
-  console.log(`  Mode:          ${mode}`);
-  console.log(`  Dashboard:     http://localhost:${PORT}/`);
-  console.log(`  Visualization: http://localhost:${PORT}/viz.html`);
-  console.log(`  Demo App:      http://localhost:${PORT}/demo.html\n`);
+  console.log(`  Mode:             ${mode}`);
+  console.log(`  Dependency Graph: http://localhost:${PORT}/viz.html\n`);
 });

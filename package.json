@@ -4,9 +4,11 @@
   "description": "LaunchDarkly Feature Flag Orchestration Demo - Multi-team release coordination with prerequisite flags",
   "type": "module",
   "main": "server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js",
     "setup-flags": "node setup-ld-flags.js"
   },
   "dependencies": {

@@ -19,9 +19,13 @@ Enterprise releases often span multiple teams and services. A frontend checkout 
 
 This demo makes that concept visual and interactive.
 
+> **Internal context**: For background on why this demo was built and how it fits into the sales motion, see the [Why It Matters — Confluence post](https://launchdarkly.atlassian.net/wiki/spaces/~71202067804d09ac24451fa80aaa218ed0cbfa/pages/4720984174/LaunchDarkly+Feature+Flag+Orchestration+Demo+for+Coordinated+Software+Releases) (LaunchDarkly team only).
+
 ---
 
 ## Setup
+
+**Requirements**: Node.js 18+ and npm.
 
 ### 1. Install dependencies
 
@@ -37,18 +41,20 @@ cp .env.example .env
 
 Edit `.env` with your LaunchDarkly credentials:
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `LD_API_KEY` | Yes | REST API access token (starts with `api-`). Create at [Settings → Authorization](https://app.launchdarkly.com/settings/authorization) |
-| `LD_PROJECT_KEY` | Yes | Your LaunchDarkly project key |
-| `LD_ENVIRONMENT_KEY` | Yes | Target environment (e.g. `production`) |
-| `LD_SDK_KEY` | For live mode | Server-side SDK key (starts with `sdk-`). Leave empty for simulation mode |
-| `LD_CLIENT_SIDE_ID` | Optional | Client-side ID for browser SDK features (observability, session replay) |
-| `PORT` | No | Server port (default: `3000`) |
+| Variable | When needed | Description |
+|----------|-------------|-------------|
+| `LD_API_KEY` | Setup + live mode | REST API access token (starts with `api-`). Create at [Settings → Authorization](https://app.launchdarkly.com/settings/authorization). Required for `setup-flags` and bidirectional sync. |
+| `LD_PROJECT_KEY` | Setup + live mode | Your LaunchDarkly project key. Find at Project Settings. |
+| `LD_ENVIRONMENT_KEY` | Setup + live mode | Target environment (default: `production`) |
+| `LD_SDK_KEY` | Live mode only | Server-side SDK key (starts with `sdk-`). Omit to use simulation mode — no LD account needed. |
+| `LD_CLIENT_SIDE_ID` | Optional | Client-side ID for browser SDK features (observability, session replay on the shop page) |
+| `PORT` | Optional | Server port (default: `3000`) |
+
+> **Simulation mode**: If you just want to try the demo without a LaunchDarkly account, skip steps 2–3 entirely and go straight to `npm start`. The app runs with an in-memory simulation that mirrors prerequisite behavior.
 
 ### 3. Create flags in LaunchDarkly
 
-Run the setup script to create all flags with prerequisite relationships:
+If using live mode, run the setup script to create all flags with prerequisite relationships:
 
 ```bash
 npm run setup-flags
@@ -73,9 +79,7 @@ npm start
 
 Open [http://localhost:3000](http://localhost:3000) — this loads the dependency graph.
 
-**Simulation mode** (no LD keys): The app runs with an in-memory flag simulation that mirrors prerequisite behavior. No LaunchDarkly account needed.
-
-**Live mode** (with `LD_SDK_KEY` + `LD_API_KEY`): Flags sync bidirectionally with LaunchDarkly. Toggle in the graph and see it reflected in the LD dashboard, or toggle in LD and see the graph update.
+In **live mode** (with `LD_SDK_KEY` + `LD_API_KEY`), flags sync bidirectionally — toggle in the graph and see it reflected in the LD dashboard, or toggle in LD and see the graph update.
 
 ---
 
@@ -155,6 +159,18 @@ LD_ACCESS_TOKEN=api-xxxx ld-find-code-refs \
 
 ---
 
+## Additional Pages (Hidden)
+
+The project includes three additional pages that are not linked from the main navigation but are still accessible by URL. These can be useful for extended demos:
+
+| Page | URL | Description |
+|------|-----|-------------|
+| Release Dashboard | `/index.html` | Team-organized cards with flag toggles, prerequisite badges, staged rollout, and activity log |
+| Demo App | `/demo.html` | Technical mock showing checkout components that respond to flag state |
+| VERDE+ Shop | `/shop.html` | Fully designed storefront with flag-driven UI (checkout redesign, one-click purchase, recommended styles), user context switching for targeted flags, and LaunchDarkly observability/session replay integration |
+
+---
+
 ## Project Structure
 
 ```
@@ -164,9 +180,9 @@ LD_ACCESS_TOKEN=api-xxxx ld-find-code-refs \
 │   ├── viz.html            # Dependency graph (main page)
 │   ├── data.js             # Shared data layer (server or client-side)
 │   ├── styles.css          # Shared navigation styles
-│   ├── index.html          # Release dashboard (hidden)
-│   ├── demo.html           # Technical demo page (hidden)
-│   └── shop.html           # Mock storefront (hidden, flag-driven UI)
+│   ├── index.html          # Release dashboard
+│   ├── demo.html           # Technical demo page
+│   └── shop.html           # Mock storefront (flag-driven UI, observability)
 ├── .env.example            # Environment variable template
 ├── .github/workflows/      # GitHub Actions for code references
 └── .launchdarkly/          # Code references config
